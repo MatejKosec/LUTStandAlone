@@ -1,5 +1,39 @@
 #define su2double double
 
+class CThermoList {
+public:
+	su2double   	 StaticEnergy,			/*!< \brief Internal Energy. */
+	Entropy,  				/*!< \brief Entropy. */
+	Density,  				/*!< \brief Density. */
+	Pressure, 				/*!< \brief Pressure. */
+	SoundSpeed2, 		/*!< \brief SpeedSound. */
+	Temperature,			/*!< \brief Temperature. */
+	dPdrho_e, 				/*!< \brief Fluid derivative DpDd_e. */
+	dPde_rho, 				/*!< \brief Fluid derivative DpDe_d. */
+	dTdrho_e, 				/*!< \brief Fluid derivative DTDd_e. */
+	dTde_rho, 				/*!< \brief Fluid derivative DTDe_d. */
+	Cp,              /*!< \brief Specific Heat Capacity at constant pressure. */
+	Mu,					    /*!< \brief Laminar Viscosity. */
+	dmudrho_T, 			/*!< \brief Fluid derivative DmuDrho_T */
+	dmudT_rho,				/*!< \brief Fluid derivative DmuDT_rho. */
+	Kt,					    /*!< \brief Thermal Conductivity. */
+	dktdrho_T, 			/*!< \brief Fluid derivative DktDrho_T.  */
+	dktdT_rho;				/*!< \brief Fluid derivative DktDT_rho. */
+
+
+	/*!
+	 * \brief Constructor of the class.
+	 */
+	CThermoList(void);
+
+	/*!
+	 * \brief Destructor of the class.
+	 */
+	virtual ~CThermoList(void);
+	void CTLprint(void);
+
+};
+
 /*!
  * \class CLookUpTable
  * \brief Child class for defining ideal gas model.
@@ -12,7 +46,7 @@ protected:
 	CThermoList **ThermoTables;
 	su2double *coeff; /*!< \brief Fluid derivative DktDT_rho. */
 	unsigned long iIndex, jIndex;
-
+	int p_dim, rho_dim; /*!< \brief The pressure and density dimensions of the table */
 
 public:
 
@@ -21,7 +55,8 @@ public:
 	 */
 	CLookUpTable(void);
 
-	CLookUpTable(CThermoList **TL);
+	CLookUpTable(char* Filename);
+
 
 
 	/*!
@@ -51,6 +86,9 @@ public:
 	 * \param[in] P - first thermodynamic variable.
 	 * \param[in] T - second thermodynamic variable.
 	 */
+
+	void SearchThermoRHOE (su2double rho, su2double e);
+
 	void SetTDState_PT (su2double P, su2double T );
 
 	/*!
@@ -92,70 +130,12 @@ public:
 
 	void SetTDState_Ps (su2double P, su2double s );
 
-	void Interp2D_lin (su2double aa, su2double ab, su2double ba, su2double bb);
-	void Interp2D_lin(su2double aa, su2double ab, su2double ba, su2double bb, su2double* coeffs);
-
-};
-
-class CThermoList {
-public:
-	su2double   	 StaticEnergy,			/*!< \brief Internal Energy. */
-	Entropy,  				/*!< \brief Entropy. */
-	Density,  				/*!< \brief Density. */
-	Pressure, 				/*!< \brief Pressure. */
-	SoundSpeed2, 		/*!< \brief SpeedSound. */
-	Temperature,			/*!< \brief Temperature. */
-	dPdrho_e, 				/*!< \brief Fluid derivative DpDd_e. */
-	dPde_rho, 				/*!< \brief Fluid derivative DpDe_d. */
-	dTdrho_e, 				/*!< \brief Fluid derivative DTDd_e. */
-	dTde_rho, 				/*!< \brief Fluid derivative DTDe_d. */
-	Cp,              /*!< \brief Specific Heat Capacity at constant pressure. */
-	Mu,					    /*!< \brief Laminar Viscosity. */
-	dmudrho_T, 			/*!< \brief Fluid derivative DmuDrho_T */
-	dmudT_rho,				/*!< \brief Fluid derivative DmuDT_rho. */
-	Kt,					    /*!< \brief Thermal Conductivity. */
-	dktdrho_T, 			/*!< \brief Fluid derivative DktDrho_T.  */
-	dktdT_rho;				/*!< \brief Fluid derivative DktDT_rho. */
-
-
-	/*!
-	 * \brief Constructor of the class.
-	 */
-	CThermoList(void);
-
-	/*!
-	 * \brief Destructor of the class.
-	 */
-	virtual ~CThermoList(void);
-
+	su2double Interp2D_lin(su2double aa, su2double ab, su2double ba, su2double bb);
+	void TableLoadCFX(char* filename);
+	void LUTprint(void);
 
 };
 
 
-CThermoList::CThermoList(){
-
-	StaticEnergy = 0.0;
-	Entropy      = 0.0;
-	Density      = 0.0;
-	Pressure     = 0.0;
-	SoundSpeed2  = 0.0;
-	Temperature  = 0.0;
-	dPdrho_e     = 0.0;
-	dPde_rho     = 0.0;
-	dTdrho_e     = 0.0;
-	dTde_rho     = 0.0;
-	Cp           = 0.0;
-	Mu 			 = 0.0;
-	dmudrho_T    = 0.0;
-	dmudT_rho    = 0.0;
-	Kt           = 0.0;
-	dktdrho_T    = 0.0;
-	dktdT_rho    = 0.0;
-
-}
-
-CThermoList::~CThermoList(){
-
-}
 
 
