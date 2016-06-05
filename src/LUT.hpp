@@ -48,6 +48,24 @@ protected:
 	unsigned long iIndex, jIndex;
 	int p_dim, rho_dim; /*!< \brief The pressure and density dimensions of the table */
 
+	//su2double StaticEnergy_limits[2];
+	//su2double Entropy_limits[2];
+	su2double Density_limits[2];
+	su2double Pressure_limits[2];
+	//su2double SoundSpeed2_limits[2];
+	//su2double Temperature_limits[2];
+	//su2double dPdrho_e_limits[2];
+	//su2double dPde_rho_limits[2];
+	//su2double dTdrho_e_limits[2];
+	//su2double dTde_rho_limits[2];
+	//su2double Cp_limits[2];
+	//su2double Mu_limits[2];
+	//su2double dmudrho_T_limits[2];
+	//su2double dmudT_rho_limits[2];
+	//su2double Kt_limits[2];
+	//su2double dktdrho_T_limits[2];
+	//su2double dktdT_rho_limits[2];
+
 public:
 
 	/*!
@@ -71,6 +89,8 @@ public:
 	 * \param[in] thermo2 - second thermodynamic variable
 	 * \param[in] input thermodynamic pair.
 	 */
+	void SearchKD_Tree (su2double thermo1, su2double thermo2,  unsigned short thermoPair);
+	void SearchZigZag (su2double thermo1, su2double thermo2,  unsigned short thermoPair );
 	void SearchThermoPair (su2double thermo1, su2double thermo2,  unsigned short thermoPair );
 
 

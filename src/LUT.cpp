@@ -11,12 +11,12 @@
 using namespace std;
 CThermoList::CThermoList(){
 
-	StaticEnergy = 0.0; //no
+	StaticEnergy = 0.0; //yes
 	Entropy      = 0.0; //yes
 	Density      = 0.0; //yes
 	Pressure     = 0.0; //yes
 	SoundSpeed2  = 0.0; //yes
-	Temperature  = 0.0; //no
+	Temperature  = 0.0; //yes
 	dPdrho_e     = 0.0; //yes
 	dPde_rho     = 0.0; //yes
 	dTdrho_e     = 0.0; //yes
@@ -68,12 +68,19 @@ CLookUpTable::CLookUpTable() {
 
 CLookUpTable::CLookUpTable(char *Filename) {
 	ThermoTables = NULL;
-	TableLoadCFX(Filename);
-	coeff = new su2double[4];
-	iIndex = 0;
-	jIndex = 0;
-	cout<<"p_dim  : "<<p_dim<<endl;
-	cout<<"rho_dim: "<<rho_dim<<endl;
+	try
+	{
+		TableLoadCFX(Filename);
+		coeff = new su2double[4];
+		iIndex = 0;
+		jIndex = 0;
+		cout<<"p_dim  : "<<p_dim<<endl;
+		cout<<"rho_dim: "<<rho_dim<<endl;
+	}
+	catch (exception& e)
+	{
+		cerr<< e.what() << '\n';
+	}
 }
 
 
@@ -81,8 +88,122 @@ CLookUpTable::CLookUpTable(char *Filename) {
 CLookUpTable::~CLookUpTable(void) {
 
 }
+void CLookUpTable::SearchKD_Tree (su2double thermo1, su2double thermo2,  unsigned short thermoPair){
 
-void CLookUpTable::SearchThermoPair (su2double thermo1, su2double thermo2,  unsigned short thermoPair ){
+	su2double BestDist;
+	su2double RunVal;
+	unsigned int LowerI = 0;
+	unsigned int UpperI = ceil(rho_dim/2);
+	unsigned int LowerJ = 0;
+	unsigned int UpperJ = ceil(p_dim/2);
+	unsigned int leafsize = rho_dim*p_dim;
+	unsigned int depth = 0;
+	cout<<"Here"<<endl;
+	while (leafsize>2)
+	{
+		cout<<"Here2"<<endl;
+		switch(thermoPair)
+		{
+		case 'RHOE':
+			cout<<"Here2"<<endl;
+			if ((depth && 1) and ((UpperI-LowerI)>1))
+			{
+				RunVal = ThermoTables[UpperI][UpperJ].Density;
+			}
+			else if ((depth && 1)==false and ((UpperJ-LowerJ)>1))
+			{
+				RunVal = ThermoTables[UpperI][UpperJ].StaticEnergy;
+			}
+
+			break;
+
+		case 'PT':
+
+
+			break;
+
+		case 'PRHO':
+
+
+			break;
+
+
+		default:
+			if ((depth && 1) and ((UpperI-LowerI)>1))
+			{
+				if (RunVal>thermo1)
+				{
+					UpperI = ceil((UpperI-LowerI)/2);
+				}
+				else if (RunVal<thermo1)
+				{
+					LowerI = UpperI;
+					UpperI = rho_dim;
+				}
+
+			}
+			else if ((depth && 1)==false and ((UpperJ-LowerJ)>1))
+			{
+				if (RunVal>thermo2)
+				{
+					UpperJ = ceil((UpperJ-LowerJ)/2);
+				}
+				else if (RunVal<thermo2)
+				{
+					LowerJ = UpperJ;
+					UpperJ = p_dim;
+				}
+
+			}
+			depth++;
+			leafsize = (UpperI-LowerI)*(UpperJ-LowerJ);
+		}
+
+	}
+	cout<<"Here3"<<endl;
+	cout<<"I "<<LowerI<<" "<<UpperI<<endl;
+	cout<<"J "<<LowerJ<<" "<<UpperJ<<endl;
+	//If lower than leafsize, transition to brute force
+	int xmax, ymax;
+	su2double D_rho, g_rho;
+	su2double D_e, g_e;
+	su2double e = thermo2;
+	su2double rho = thermo1;
+	D_rho = ThermoTables[LowerI][LowerJ].Density-rho;
+	D_e = ThermoTables[LowerI][LowerJ].StaticEnergy-e;
+
+	cout<<"Here4"<<endl;
+	for (int j=0; j<(UpperJ-LowerJ); j++)
+	{
+		for (int i=0; i<(UpperI-LowerI); i++)
+		{
+			g_rho = (ThermoTables[i][j].Density-rho);
+			g_e = (ThermoTables[i][j].StaticEnergy-e);
+			if ((pow(g_rho/rho,2)+pow(g_e/e,2))<(pow(D_rho/rho,2)+pow(D_e/e,2)))
+			{
+				xmax = i;
+				D_rho = g_rho;
+				ymax = j;
+				D_e   = g_e;
+			}
+		}
+	}
+
+	//Detect if it is in on a boundary:
+	if(ymax==(0)) ymax++;
+	if(xmax==(0)) xmax++;
+
+	//Detect if point is not bottom corner of simplex
+	if(D_e<0) ymax++;
+	if(D_rho<0) xmax++;
+	cout<<'KD search found'<<endl;
+	cout<<xmax<<endl;
+	cout<<ymax<<endl;
+
+}
+
+
+void CLookUpTable::SearchZigZag (su2double thermo1, su2double thermo2,  unsigned short thermoPair ){
 
 	switch(thermoPair)
 	{
@@ -103,85 +224,103 @@ void CLookUpTable::SearchThermoPair (su2double thermo1, su2double thermo2,  unsi
 }
 
 void CLookUpTable::SetTDState_rhoe (su2double rho, su2double e ) {
-	cout<<endl<<"Rho desired : "<<rho<<std::endl;
-	cout<<"E desired   : "<<e<<std::endl;
-	cout<<"Closest fit :"<<endl;
+	try
+	{
+		if ((rho>Density_limits[1]) or (rho<Density_limits[0]))
+		{
+			throw runtime_error(string("RHOE Input Density out of bounds, using closest fit"));
+		}
+		cout<<endl<<"Rho desired : "<<rho<<std::endl;
+		cout<<"E desired   : "<<e<<std::endl;
+		cout<<"Closest fit :"<<endl;
 
-	SearchThermoRHOE(rho, e);
-	ThermoTables[iIndex][jIndex].CTLprint();
+		SearchKD_Tree(rho,e,'RHOE');
+		SearchThermoRHOE(rho, e);
+		ThermoTables[iIndex][jIndex].CTLprint();
 
+		cout<<endl;
 
+		su2double StaticEnergy = e;
+		su2double Density      = rho;
+		su2double Entropy      = Interp2D_lin(ThermoTables[iIndex-1][jIndex-1].Entropy,
+				ThermoTables[iIndex-1][jIndex].Entropy,ThermoTables[iIndex][jIndex-1].Entropy,
+				ThermoTables[iIndex][jIndex].Entropy );
+		su2double Pressure     = Interp2D_lin(ThermoTables[iIndex-1][jIndex-1].Pressure,
+				ThermoTables[iIndex-1][jIndex].Pressure,ThermoTables[iIndex][jIndex-1].Pressure,
+				ThermoTables[iIndex][jIndex].Pressure );
+		su2double SoundSpeed2  = Interp2D_lin(ThermoTables[iIndex-1][jIndex-1].SoundSpeed2,
+				ThermoTables[iIndex-1][jIndex].SoundSpeed2,ThermoTables[iIndex][jIndex-1].SoundSpeed2,
+				ThermoTables[iIndex][jIndex].SoundSpeed2 );
+		su2double Temperature  = Interp2D_lin(ThermoTables[iIndex-1][jIndex-1].Temperature,
+				ThermoTables[iIndex-1][jIndex].Temperature,ThermoTables[iIndex][jIndex-1].Temperature,
+				ThermoTables[iIndex][jIndex].Temperature );
+		su2double dPdrho_e     = Interp2D_lin(ThermoTables[iIndex-1][jIndex-1].dPdrho_e,
+				ThermoTables[iIndex-1][jIndex].dPdrho_e,ThermoTables[iIndex][jIndex-1].dPdrho_e,
+				ThermoTables[iIndex][jIndex].dPdrho_e );
+		su2double dPde_rho     = Interp2D_lin(ThermoTables[iIndex-1][jIndex-1].dPde_rho,
+				ThermoTables[iIndex-1][jIndex].dPde_rho,ThermoTables[iIndex][jIndex-1].dPde_rho,
+				ThermoTables[iIndex][jIndex].dPde_rho );
+		su2double dTdrho_e     =  Interp2D_lin(ThermoTables[iIndex-1][jIndex-1].dTdrho_e,
+				ThermoTables[iIndex-1][jIndex].dTdrho_e,ThermoTables[iIndex][jIndex-1].dTdrho_e,
+				ThermoTables[iIndex][jIndex].dTdrho_e );
+		su2double dTde_rho     =  Interp2D_lin(ThermoTables[iIndex-1][jIndex-1].dTde_rho,
+				ThermoTables[iIndex-1][jIndex].dTde_rho,ThermoTables[iIndex][jIndex-1].dTde_rho,
+				ThermoTables[iIndex][jIndex].dTde_rho );
+		su2double Cp           =  Interp2D_lin(ThermoTables[iIndex-1][jIndex-1].Cp,
+				ThermoTables[iIndex-1][jIndex].Cp,ThermoTables[iIndex][jIndex-1].Cp,
+				ThermoTables[iIndex][jIndex].Cp );
+		su2double Mu 		   =  Interp2D_lin(ThermoTables[iIndex-1][jIndex-1].Mu,
+				ThermoTables[iIndex-1][jIndex].Mu,ThermoTables[iIndex][jIndex-1].Mu,
+				ThermoTables[iIndex][jIndex].Mu );
+		su2double dmudrho_T    =  Interp2D_lin(ThermoTables[iIndex-1][jIndex-1].dmudrho_T,
+				ThermoTables[iIndex-1][jIndex].dmudrho_T,ThermoTables[iIndex][jIndex-1].dmudrho_T,
+				ThermoTables[iIndex][jIndex].dmudrho_T );
+		su2double dmudT_rho    =  Interp2D_lin(ThermoTables[iIndex-1][jIndex-1].dmudT_rho,
+				ThermoTables[iIndex-1][jIndex].dmudT_rho,ThermoTables[iIndex][jIndex-1].dmudT_rho,
+				ThermoTables[iIndex][jIndex].dmudT_rho );
+		su2double Kt           =  Interp2D_lin(ThermoTables[iIndex-1][jIndex-1].Kt,
+				ThermoTables[iIndex-1][jIndex].Kt,ThermoTables[iIndex][jIndex-1].Kt,
+				ThermoTables[iIndex][jIndex].Kt );
+		su2double dktdrho_T    =  Interp2D_lin(ThermoTables[iIndex-1][jIndex-1].dktdrho_T,
+				ThermoTables[iIndex-1][jIndex].dktdrho_T,ThermoTables[iIndex][jIndex-1].dktdrho_T,
+				ThermoTables[iIndex][jIndex].dktdrho_T );
+		su2double dktdT_rho    =  Interp2D_lin(ThermoTables[iIndex-1][jIndex-1].dktdT_rho,
+				ThermoTables[iIndex-1][jIndex].dktdT_rho,ThermoTables[iIndex][jIndex-1].dktdT_rho,
+				ThermoTables[iIndex][jIndex].dktdT_rho );
 
+		if ((Density>Density_limits[1]) or (Density<Density_limits[0]))
+		{
 
-	cout<<endl;
+			throw runtime_error(string("RHOE Interpolated Density out of bounds, using closest fit"));
 
-	su2double StaticEnergy = e;
-	su2double Density      = rho;
-	su2double Entropy      = Interp2D_lin(ThermoTables[iIndex-1][jIndex-1].Entropy,
-			ThermoTables[iIndex-1][jIndex].Entropy,ThermoTables[iIndex][jIndex-1].Entropy,
-			ThermoTables[iIndex][jIndex].Entropy );
-	su2double Pressure     = Interp2D_lin(ThermoTables[iIndex-1][jIndex-1].Pressure,
-			ThermoTables[iIndex-1][jIndex].Pressure,ThermoTables[iIndex][jIndex-1].Pressure,
-			ThermoTables[iIndex][jIndex].Pressure );
-	su2double SoundSpeed2  = Interp2D_lin(ThermoTables[iIndex-1][jIndex-1].SoundSpeed2,
-			ThermoTables[iIndex-1][jIndex].SoundSpeed2,ThermoTables[iIndex][jIndex-1].SoundSpeed2,
-			ThermoTables[iIndex][jIndex].SoundSpeed2 );
-	su2double Temperature  = Interp2D_lin(ThermoTables[iIndex-1][jIndex-1].Temperature,
-			ThermoTables[iIndex-1][jIndex].Temperature,ThermoTables[iIndex][jIndex-1].Temperature,
-			ThermoTables[iIndex][jIndex].Temperature );
-	su2double dPdrho_e     = Interp2D_lin(ThermoTables[iIndex-1][jIndex-1].dPdrho_e,
-			ThermoTables[iIndex-1][jIndex].dPdrho_e,ThermoTables[iIndex][jIndex-1].dPdrho_e,
-			ThermoTables[iIndex][jIndex].dPdrho_e );
-	su2double dPde_rho     = Interp2D_lin(ThermoTables[iIndex-1][jIndex-1].dPde_rho,
-			ThermoTables[iIndex-1][jIndex].dPde_rho,ThermoTables[iIndex][jIndex-1].dPde_rho,
-			ThermoTables[iIndex][jIndex].dPde_rho );
-	su2double dTdrho_e     =  Interp2D_lin(ThermoTables[iIndex-1][jIndex-1].dTdrho_e,
-			ThermoTables[iIndex-1][jIndex].dTdrho_e,ThermoTables[iIndex][jIndex-1].dTdrho_e,
-			ThermoTables[iIndex][jIndex].dTdrho_e );
-	su2double dTde_rho     =  Interp2D_lin(ThermoTables[iIndex-1][jIndex-1].dTde_rho,
-			ThermoTables[iIndex-1][jIndex].dTde_rho,ThermoTables[iIndex][jIndex-1].dTde_rho,
-			ThermoTables[iIndex][jIndex].dTde_rho );
-	su2double Cp           =  Interp2D_lin(ThermoTables[iIndex-1][jIndex-1].Cp,
-			ThermoTables[iIndex-1][jIndex].Cp,ThermoTables[iIndex][jIndex-1].Cp,
-			ThermoTables[iIndex][jIndex].Cp );
-	su2double Mu 		   =  Interp2D_lin(ThermoTables[iIndex-1][jIndex-1].Mu,
-			ThermoTables[iIndex-1][jIndex].Mu,ThermoTables[iIndex][jIndex-1].Mu,
-			ThermoTables[iIndex][jIndex].Mu );
-	su2double dmudrho_T    =  Interp2D_lin(ThermoTables[iIndex-1][jIndex-1].dmudrho_T,
-			ThermoTables[iIndex-1][jIndex].dmudrho_T,ThermoTables[iIndex][jIndex-1].dmudrho_T,
-			ThermoTables[iIndex][jIndex].dmudrho_T );
-	su2double dmudT_rho    =  Interp2D_lin(ThermoTables[iIndex-1][jIndex-1].dmudT_rho,
-			ThermoTables[iIndex-1][jIndex].dmudT_rho,ThermoTables[iIndex][jIndex-1].dmudT_rho,
-			ThermoTables[iIndex][jIndex].dmudT_rho );
-	su2double Kt           =  Interp2D_lin(ThermoTables[iIndex-1][jIndex-1].Kt,
-			ThermoTables[iIndex-1][jIndex].Kt,ThermoTables[iIndex][jIndex-1].Kt,
-			ThermoTables[iIndex][jIndex].Kt );
-	su2double dktdrho_T    =  Interp2D_lin(ThermoTables[iIndex-1][jIndex-1].dktdrho_T,
-			ThermoTables[iIndex-1][jIndex].dktdrho_T,ThermoTables[iIndex][jIndex-1].dktdrho_T,
-			ThermoTables[iIndex][jIndex].dktdrho_T );
-	su2double dktdT_rho    =  Interp2D_lin(ThermoTables[iIndex-1][jIndex-1].dktdT_rho,
-			ThermoTables[iIndex-1][jIndex].dktdT_rho,ThermoTables[iIndex][jIndex-1].dktdT_rho,
-			ThermoTables[iIndex][jIndex].dktdT_rho );
-
-	cout<<"Interpolated fit:"<<endl;
-	cout<<"StaticEnergy:"<<StaticEnergy<<endl;
-	cout<<"Entropy     :"<<Entropy<<endl;
-	cout<<"Density     :"<<Density<<endl;
-	cout<<"Pressure    :"<<Pressure<<endl;
-	cout<<"SoundSpeed2 :"<<SoundSpeed2<<endl;
-	cout<<"Temperature :"<<Temperature<<endl;
-	cout<<"dPdrho_e    :"<<dPdrho_e<<endl;
-	cout<<"dPde_rho    :"<<dPde_rho<<endl;
-	cout<<"dTdrho_e    :"<<dTdrho_e<<endl;
-	cout<<"dTde_rho    :"<<dTde_rho<<endl;
-	cout<<"Cp          :"<<Cp<<endl;
-	cout<<"Mu          :"<<Mu<<endl;
-	cout<<"dmudrho_T   :"<<dmudrho_T<<endl;
-	cout<<"dmudT_rho   :"<<dmudT_rho<<endl;
-	cout<<"Kt          :"<<Kt<<endl;
-	cout<<"dktdrho_T   :"<<dktdrho_T<<endl;
-	cout<<"dktdT_rho   :"<<dktdT_rho<<endl;
-
+		}
+		if ((Pressure>Pressure_limits[1]) or (Pressure<Pressure_limits[0]))
+		{
+			throw runtime_error(string("RHOE Interpolated Pressure out of bounds, using closest fit"));
+		}
+		cout<<"Interpolated fit:"<<endl;
+		cout<<"StaticEnergy:"<<StaticEnergy<<endl;
+		cout<<"Entropy     :"<<Entropy<<endl;
+		cout<<"Density     :"<<Density<<endl;
+		cout<<"Pressure    :"<<Pressure<<endl;
+		cout<<"SoundSpeed2 :"<<SoundSpeed2<<endl;
+		cout<<"Temperature :"<<Temperature<<endl;
+		cout<<"dPdrho_e    :"<<dPdrho_e<<endl;
+		cout<<"dPde_rho    :"<<dPde_rho<<endl;
+		cout<<"dTdrho_e    :"<<dTdrho_e<<endl;
+		cout<<"dTde_rho    :"<<dTde_rho<<endl;
+		cout<<"Cp          :"<<Cp<<endl;
+		cout<<"Mu          :"<<Mu<<endl;
+		cout<<"dmudrho_T   :"<<dmudrho_T<<endl;
+		cout<<"dmudT_rho   :"<<dmudT_rho<<endl;
+		cout<<"Kt          :"<<Kt<<endl;
+		cout<<"dktdrho_T   :"<<dktdrho_T<<endl;
+		cout<<"dktdT_rho   :"<<dktdT_rho<<endl;
+	}
+	catch (exception& e)
+	{
+		cerr<<'\n'<< e.what() << '\n';
+	}
 
 }
 
@@ -231,6 +370,7 @@ void CLookUpTable::SearchThermoRHOE (su2double rho, su2double e){
 	cout<<"jIndex "<<ymax<<" iIndex "<<xmax<<endl;
 	jIndex = ymax;
 	iIndex = xmax;
+
 }
 
 void CLookUpTable::SetTDState_PT (su2double P, su2double T ) {
@@ -332,6 +472,9 @@ void CLookUpTable::TableLoadCFX(char *filename){
 					cout<<"Tables have been allocated"<<var<<endl;
 
 					//Fill in the densities
+					Density_limits[0] = 10E15;
+					Density_limits[1] = 0;
+
 					su2double* vD = new su2double[set_x];
 
 					getline(table,line);
@@ -344,6 +487,14 @@ void CLookUpTable::TableLoadCFX(char *filename){
 						for (int i =0; i<var_steps; i++)
 						{
 							inD>>vD[10*k+i];
+							if (vD[10*k+i]>Density_limits[1])
+							{
+								Density_limits[1]=vD[10*k+i];
+							}
+							if (vD[10*k+i]<Density_limits[0])
+							{
+								Density_limits[0]=vD[10*k+i];
+							}
 						}
 					}
 					for(int i =0; i<set_x; i++)
@@ -358,6 +509,8 @@ void CLookUpTable::TableLoadCFX(char *filename){
 
 					//Fill in the pressures
 					su2double* vP = new su2double[set_y];
+					Pressure_limits[0] = 10E15;
+					Pressure_limits[1] = 0;
 
 					for (int k =0; k<ceil(float(set_y)/10.0);k++)
 					{
@@ -369,6 +522,14 @@ void CLookUpTable::TableLoadCFX(char *filename){
 						for (int j =0; j<var_steps; j++)
 						{
 							inP>>vP[10*k+j];
+							if (vP[10*k+j]>Pressure_limits[1])
+							{
+								Pressure_limits[1]=vP[10*k+j];
+							}
+							if (vP[10*k+j]<Pressure_limits[0])
+							{
+								Pressure_limits[0]=vP[10*k+j];
+							}
 						}
 					}
 					for(int i =0; i<set_x; i++)
@@ -386,6 +547,7 @@ void CLookUpTable::TableLoadCFX(char *filename){
 				else if (x != set_x && y!=set_y)
 				{
 					throw "The encountered dimensions of the CFX table are not the same throughout. They should be; for this to work.";
+
 				}
 				//Go through each one of the variables of interest
 				if(var==1)
@@ -527,170 +689,199 @@ void CLookUpTable::TableLoadCFX(char *filename){
 								}
 							}
 
-						ThermoTables[i][j].Mu=inp[i];
+							ThermoTables[i][j].Mu=inp[i];
 
+						}
 					}
+					cout<<"Tables have been filled with viscosity values "<<var<<endl;
+
 				}
-				cout<<"Tables have been filled with viscosity values "<<var<<endl;
-
-			}
-			if(var==9)
-			{
-				for (int k =0; k<ceil(float(set_x)/10.0);k++) getline(table,line); //skip density
-				for (int k =0; k<ceil(float(set_y)/10.0);k++) getline(table,line); //skip pressure
-
-				su2double inp[10];
-
-				for(int j =0; j<set_y; j++)
+				if(var==9)
 				{
-					for (int i =0; i<set_x; i++)
+					for (int k =0; k<ceil(float(set_x)/10.0);k++) getline(table,line); //skip density
+					for (int k =0; k<ceil(float(set_y)/10.0);k++) getline(table,line); //skip pressure
+
+					su2double inp[10];
+
+					for(int j =0; j<set_y; j++)
 					{
-						if ((j*set_x+i)%10==0)
+						for (int i =0; i<set_x; i++)
 						{
-							getline(table,line);
-							cout<<line<<endl;
-							istringstream in(line);
-							for (int z = 0; z<10; z++)
+							if ((j*set_x+i)%10==0)
 							{
-								in>>inp[z];
+								getline(table,line);
+								cout<<line<<endl;
+								istringstream in(line);
+								for (int z = 0; z<10; z++)
+								{
+									in>>inp[z];
+								}
 							}
+
+							ThermoTables[i][j].Kt=inp[i];
+
+
+						}
+					}
+					cout<<"Tables have been filled with thermal conductivity values "<<var<<endl;
+
+				}
+				if(var==10)
+				{
+					for (int k =0; k<ceil(float(set_x)/10.0);k++) getline(table,line); //skip density
+					for (int k =0; k<ceil(float(set_y)/10.0);k++) getline(table,line); //skip pressure
+
+
+					su2double inp[10];
+
+					for(int j =0; j<set_y; j++)
+					{
+						for (int i =0; i<set_x; i++)
+						{
+							if ((j*set_x+i)%10==0)
+							{
+								getline(table,line);
+								cout<<line<<endl;
+								istringstream in(line);
+								for (int z = 0; z<10; z++)
+								{
+									in>>inp[z];
+								}
+							}
+
+							ThermoTables[i][j].dPdrho_e=inp[i];
+
+
+						}
+					}
+					cout<<"Tables have been filled with specific dPdrho_e values "<<var<<endl;
+
+				}
+				if(var==11)
+				{
+					for (int k =0; k<ceil(float(set_x)/10.0);k++) getline(table,line); //skip density
+					for (int k =0; k<ceil(float(set_y)/10.0);k++) getline(table,line); //skip pressure
+
+
+					su2double inp[10];
+
+					for(int j =0; j<set_y; j++)
+					{
+						for (int i =0; i<set_x; i++)
+						{
+							if ((j*set_x+i)%10==0)
+							{
+								getline(table,line);
+								cout<<line<<endl;
+								istringstream in(line);
+								for (int z = 0; z<10; z++)
+								{
+									in>>inp[z];
+								}
+							}
+
+							ThermoTables[i][j].dPde_rho=inp[i];
+
+
 						}
 
-						ThermoTables[i][j].Kt=inp[i];
-
-
 					}
+					cout<<"Tables have been filled with specific dPde_rho values "<<var<<endl;
 				}
-				cout<<"Tables have been filled with thermal conductivity values "<<var<<endl;
-
-			}
-			if(var==10)
-			{
-				for (int k =0; k<ceil(float(set_x)/10.0);k++) getline(table,line); //skip density
-				for (int k =0; k<ceil(float(set_y)/10.0);k++) getline(table,line); //skip pressure
-
-
-				su2double inp[10];
-
-				for(int j =0; j<set_y; j++)
+				if(var==12)
 				{
-					for (int i =0; i<set_x; i++)
+					for (int k =0; k<ceil(float(set_x)/10.0);k++) getline(table,line); //skip density
+					for (int k =0; k<ceil(float(set_y)/10.0);k++) getline(table,line); //skip pressure
+
+					su2double inp[10];
+
+					for(int j =0; j<set_y; j++)
 					{
-						if ((j*set_x+i)%10==0)
+						for (int i =0; i<set_x; i++)
 						{
-							getline(table,line);
-							cout<<line<<endl;
-							istringstream in(line);
-							for (int z = 0; z<10; z++)
+							if ((j*set_x+i)%10==0)
 							{
-								in>>inp[z];
+								getline(table,line);
+								cout<<line<<endl;
+								istringstream in(line);
+								for (int z = 0; z<10; z++)
+								{
+									in>>inp[z];
+								}
 							}
+
+							ThermoTables[i][j].dTdrho_e=inp[i];
+
+
 						}
-
-						ThermoTables[i][j].dPdrho_e=inp[i];
-
-
 					}
+					cout<<"Tables have been filled with specific dTdrho_e values "<<var<<endl;
 				}
-				cout<<"Tables have been filled with specific dPdrho_e values "<<var<<endl;
-
-			}
-			if(var==11)
-			{
-				for (int k =0; k<ceil(float(set_x)/10.0);k++) getline(table,line); //skip density
-				for (int k =0; k<ceil(float(set_y)/10.0);k++) getline(table,line); //skip pressure
-
-
-				su2double inp[10];
-
-				for(int j =0; j<set_y; j++)
+				if(var==13)
 				{
-					for (int i =0; i<set_x; i++)
+					for (int k =0; k<ceil(float(set_x)/10.0);k++) getline(table,line); //skip density
+					for (int k =0; k<ceil(float(set_y)/10.0);k++) getline(table,line); //skip pressure
+
+
+					su2double inp[10];
+
+					for(int j =0; j<set_y; j++)
 					{
-						if ((j*set_x+i)%10==0)
+						for (int i =0; i<set_x; i++)
 						{
-							getline(table,line);
-							cout<<line<<endl;
-							istringstream in(line);
-							for (int z = 0; z<10; z++)
+							if ((j*set_x+i)%10==0)
 							{
-								in>>inp[z];
+								getline(table,line);
+								cout<<line<<endl;
+								istringstream in(line);
+								for (int z = 0; z<10; z++)
+								{
+									in>>inp[z];
+								}
 							}
+
+							ThermoTables[i][j].dTde_rho=inp[i];
+
 						}
-
-						ThermoTables[i][j].dPde_rho=inp[i];
-
-
 					}
-
+					cout<<"Tables have been filled with specific dTde_rho values "<<var<<endl;
 				}
-				cout<<"Tables have been filled with specific dPde_rho values "<<var<<endl;
-			}
-			if(var==12)
-			{
-				for (int k =0; k<ceil(float(set_x)/10.0);k++) getline(table,line); //skip density
-				for (int k =0; k<ceil(float(set_y)/10.0);k++) getline(table,line); //skip pressure
-
-				su2double inp[10];
-
-				for(int j =0; j<set_y; j++)
+				if(var==15)
 				{
-					for (int i =0; i<set_x; i++)
+					for (int k =0; k<ceil(float(set_x)/10.0);k++) getline(table,line); //skip density
+					for (int k =0; k<ceil(float(set_y)/10.0);k++) getline(table,line); //skip pressure
+
+
+					su2double inp[10];
+
+					for(int j =0; j<set_y; j++)
 					{
-						if ((j*set_x+i)%10==0)
+						for (int i =0; i<set_x; i++)
 						{
-							getline(table,line);
-							cout<<line<<endl;
-							istringstream in(line);
-							for (int z = 0; z<10; z++)
+							if ((j*set_x+i)%10==0)
 							{
-								in>>inp[z];
+								getline(table,line);
+								cout<<line<<endl;
+								istringstream in(line);
+								for (int z = 0; z<10; z++)
+								{
+									in>>inp[z];
+								}
 							}
+
+							ThermoTables[i][j].Temperature =inp[i];
+
 						}
-
-						ThermoTables[i][j].dTdrho_e=inp[i];
-
-
 					}
+					cout<<"Tables have been filled with Temperature values "<<var<<endl;
 				}
-				cout<<"Tables have been filled with specific dTdrho_e values "<<var<<endl;
+
 			}
-			if(var==13)
-			{
-				for (int k =0; k<ceil(float(set_x)/10.0);k++) getline(table,line); //skip density
-				for (int k =0; k<ceil(float(set_y)/10.0);k++) getline(table,line); //skip pressure
-
-
-				su2double inp[10];
-
-				for(int j =0; j<set_y; j++)
-				{
-					for (int i =0; i<set_x; i++)
-					{
-						if ((j*set_x+i)%10==0)
-						{
-							getline(table,line);
-							cout<<line<<endl;
-							istringstream in(line);
-							for (int z = 0; z<10; z++)
-							{
-								in>>inp[z];
-							}
-						}
-
-						ThermoTables[i][j].dTde_rho=inp[i];
-
-					}
-				}
-				cout<<"Tables have been filled with specific dTde_rho values "<<var<<endl;
-			}
-
 		}
 	}
-}
-rho_dim = set_x;
-p_dim = set_y;
-table.close();
+	rho_dim = set_x;
+	p_dim = set_y;
+	table.close();
 }
 
 
