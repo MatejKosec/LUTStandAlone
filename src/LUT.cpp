@@ -88,7 +88,7 @@ CLookUpTable::CLookUpTable(char *Filename) {
 CLookUpTable::~CLookUpTable(void) {
 
 }
-void CLookUpTable::SearchKD_Tree (su2double thermo1, su2double thermo2,  unsigned short thermoPair){
+void CLookUpTable::SearchKD_Tree (su2double thermo1, su2double thermo2,  char* thermoPair){
 
 	su2double BestDist;
 	su2double RunVal;
@@ -101,68 +101,65 @@ void CLookUpTable::SearchKD_Tree (su2double thermo1, su2double thermo2,  unsigne
 	cout<<"Here"<<endl;
 	while (leafsize>2)
 	{
-		cout<<"Here2"<<endl;
-		switch(thermoPair)
+		leafsize = (UpperI-LowerI)*(UpperJ-LowerJ);
+		depth++;
+		cout<<RunVal<<endl;
+
+		if (thermoPair == "RHOE")
 		{
-		case 'RHOE':
-			cout<<"Here2"<<endl;
-			if ((depth && 1) and ((UpperI-LowerI)>1))
+			cout<<"Here"<<endl;
+			if ((depth%2)==0 and ((UpperI-LowerI)>1))
 			{
 				RunVal = ThermoTables[UpperI][UpperJ].Density;
+
 			}
-			else if ((depth && 1)==false and ((UpperJ-LowerJ)>1))
+			else if ((depth%2)!=0 and ((UpperJ-LowerJ)>1))
 			{
 				RunVal = ThermoTables[UpperI][UpperJ].StaticEnergy;
+
 			}
-
-			break;
-
-		case 'PT':
+		}
+		else if (thermoPair=="PT") cout<<endl;
 
 
-			break;
-
-		case 'PRHO':
-
-
-			break;
-
-
-		default:
-			if ((depth && 1) and ((UpperI-LowerI)>1))
+		else if (thermoPair=="PRHO")cout<<endl;
+		cout<<"I "<<LowerI<<" "<<UpperI<<endl;
+		cout<<"J "<<LowerJ<<" "<<UpperJ<<endl;
+		cout<<"Here---"<<RunVal<<endl;
+		if ((depth%2)==0 and ((UpperI-LowerI)>1))
+		{
+			if (RunVal>thermo1)
 			{
-				if (RunVal>thermo1)
-				{
-					UpperI = ceil((UpperI-LowerI)/2);
-				}
-				else if (RunVal<thermo1)
-				{
-					LowerI = UpperI;
-					UpperI = rho_dim;
-				}
-
+				UpperI = LowerI + ceil((UpperI-LowerI)/2);
 			}
-			else if ((depth && 1)==false and ((UpperJ-LowerJ)>1))
+			else if (RunVal>thermo1)
 			{
-				if (RunVal>thermo2)
-				{
-					UpperJ = ceil((UpperJ-LowerJ)/2);
-				}
-				else if (RunVal<thermo2)
-				{
-					LowerJ = UpperJ;
-					UpperJ = p_dim;
-				}
+				LowerI = UpperI;
+				UpperI = rho_dim;
+			}
+
+		}
+		else if ((depth%2)!=0 and ((UpperJ-LowerJ)>1))
+		{
+			if (RunVal>thermo2)
+			{
+				UpperJ = LowerJ + ceil((UpperJ-LowerJ)/2);
+			}
+			else if (RunVal<thermo2)
+			{
+				LowerJ = UpperJ;
+				UpperJ = p_dim;
 
 			}
-			depth++;
-			leafsize = (UpperI-LowerI)*(UpperJ-LowerJ);
+
 		}
 
+		cout<<"I "<<LowerI<<" "<<UpperI<<endl;
+		cout<<"J "<<LowerJ<<" "<<UpperJ<<endl;
+
 	}
-	cout<<"Here3"<<endl;
-	cout<<"I "<<LowerI<<" "<<UpperI<<endl;
-	cout<<"J "<<LowerJ<<" "<<UpperJ<<endl;
+
+
 	//If lower than leafsize, transition to brute force
 	int xmax, ymax;
 	su2double D_rho, g_rho;
@@ -203,7 +200,7 @@ void CLookUpTable::SearchKD_Tree (su2double thermo1, su2double thermo2,  unsigne
 }
 
 
-void CLookUpTable::SearchZigZag (su2double thermo1, su2double thermo2,  unsigned short thermoPair ){
+void CLookUpTable::SearchZigZag (su2double thermo1, su2double thermo2,  unsigned long thermoPair ){
 
 	switch(thermoPair)
 	{
@@ -234,7 +231,7 @@ void CLookUpTable::SetTDState_rhoe (su2double rho, su2double e ) {
 		cout<<"E desired   : "<<e<<std::endl;
 		cout<<"Closest fit :"<<endl;
 
-		SearchKD_Tree(rho,e,'RHOE');
+		SearchKD_Tree(rho,e,"RHOE");
 		SearchThermoRHOE(rho, e);
 		ThermoTables[iIndex][jIndex].CTLprint();
 

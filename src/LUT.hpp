@@ -89,9 +89,9 @@ public:
 	 * \param[in] thermo2 - second thermodynamic variable
 	 * \param[in] input thermodynamic pair.
 	 */
-	void SearchKD_Tree (su2double thermo1, su2double thermo2,  unsigned short thermoPair);
-	void SearchZigZag (su2double thermo1, su2double thermo2,  unsigned short thermoPair );
-	void SearchThermoPair (su2double thermo1, su2double thermo2,  unsigned short thermoPair );
+	void SearchKD_Tree (su2double thermo1, su2double thermo2,  char* thermoPair);
+	void SearchZigZag (su2double thermo1, su2double thermo2,  unsigned long thermoPair );
+	void SearchThermoPair (su2double thermo1, su2double thermo2,  unsigned long thermoPair );
 
 
 	/*!
