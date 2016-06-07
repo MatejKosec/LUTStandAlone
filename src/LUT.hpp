@@ -1,5 +1,5 @@
 #define su2double double
-
+#include <string>
 class CThermoList {
 public:
 	su2double   	 StaticEnergy,			/*!< \brief Internal Energy. */
@@ -44,27 +44,28 @@ class CLookUpTable {
 
 protected:
 	CThermoList **ThermoTables;
-	su2double *coeff; /*!< \brief Fluid derivative DktDT_rho. */
-	unsigned long iIndex, jIndex;
+	su2double coeff[3][3]; //Interpolation coefficients
+	/*!< \brief Fluid derivative DktDT_rho. */
+	long iIndex, jIndex;
 	int p_dim, rho_dim; /*!< \brief The pressure and density dimensions of the table */
 
-	//su2double StaticEnergy_limits[2];
-	//su2double Entropy_limits[2];
+	su2double StaticEnergy_limits[2];
+	su2double Entropy_limits[2];
 	su2double Density_limits[2];
 	su2double Pressure_limits[2];
-	//su2double SoundSpeed2_limits[2];
-	//su2double Temperature_limits[2];
-	//su2double dPdrho_e_limits[2];
-	//su2double dPde_rho_limits[2];
-	//su2double dTdrho_e_limits[2];
-	//su2double dTde_rho_limits[2];
-	//su2double Cp_limits[2];
-	//su2double Mu_limits[2];
-	//su2double dmudrho_T_limits[2];
-	//su2double dmudT_rho_limits[2];
-	//su2double Kt_limits[2];
-	//su2double dktdrho_T_limits[2];
-	//su2double dktdT_rho_limits[2];
+	su2double SoundSpeed2_limits[2];
+	su2double Temperature_limits[2];
+	su2double dPdrho_e_limits[2];
+	su2double dPde_rho_limits[2];
+	su2double dTdrho_e_limits[2];
+	su2double dTde_rho_limits[2];
+	su2double Cp_limits[2];
+	su2double Mu_limits[2];
+	su2double dmudrho_T_limits[2];
+	su2double dmudT_rho_limits[2];
+	su2double Kt_limits[2];
+	su2double dktdrho_T_limits[2];
+	su2double dktdT_rho_limits[2];
 
 public:
 
@@ -149,7 +150,8 @@ public:
 	 */
 
 	void SetTDState_Ps (su2double P, su2double s );
-
+	void Interp2D_SingleSkewCoeff(std::string s);
+	void Interp2D_ArbitrarySkewCoeff(std::string s);
 	su2double Interp2D_lin(su2double aa, su2double ab, su2double ba, su2double bb);
 	void TableLoadCFX(char* filename);
 	void LUTprint(void);
