@@ -73,7 +73,7 @@ CLookUpTable::CLookUpTable() {
 }
 
 
-CLookUpTable::CLookUpTable(char *Filename) {
+CLookUpTable::CLookUpTable(char* Filename) {
 	ThermoTables = NULL;
 	try
 	{
@@ -101,9 +101,8 @@ CLookUpTable::CLookUpTable(char *Filename) {
 CLookUpTable::~CLookUpTable(void) {
 
 }
-void CLookUpTable::SearchKD_Tree (su2double thermo1, su2double thermo2,  char* thermoPair){
+void CLookUpTable::SearchKD_Tree (su2double thermo1, su2double thermo2,  string thermoPair){
 
-	su2double BestDist;
 	su2double RunVal;
 	unsigned int LowerI = 0;
 	unsigned int UpperI = ceil(rho_dim/2);
@@ -206,7 +205,7 @@ void CLookUpTable::SearchKD_Tree (su2double thermo1, su2double thermo2,  char* t
 	//Detect if point is not bottom corner of simplex
 	if(D_e<0) ymax++;
 	if(D_rho<0) xmax++;
-	cout<<'KD search found'<<endl;
+	cout<<"KD search found"<<endl;
 	cout<<xmax<<endl;
 	cout<<ymax<<endl;
 
@@ -239,17 +238,17 @@ void CLookUpTable::SetTDState_rhoe (su2double rho, su2double e ) {
 		//Check if inputs are in range (not a complete 2D check)
 		if ((rho>Density_limits[1]) or (rho<Density_limits[0]))
 		{
-			throw runtime_error(string("RHOE Input Density out of bounds, using closest fit"));
+			throw runtime_error("RHOE Input Density out of bounds");
 		}
 		if ((e>StaticEnergy_limits[1]) or (e<StaticEnergy_limits[0]))
 		{	cout<<StaticEnergy_limits[0]<<" "<<StaticEnergy_limits[1]<<" "<<e<<endl;
-		throw runtime_error(string("RHOE Input StaticEnergy out of bounds, using closest fit"));
+		throw runtime_error("RHOE Input StaticEnergy out of bounds");
 		}
 		cout<<endl<<"Rho desired : "<<rho<<std::endl;
 		cout<<"E desired   : "<<e<<std::endl;
 
 		su2double RunVal;
-		unsigned  int CFL    = 2;
+		unsigned int CFL    = 2;
 		unsigned int LowerI;
 		unsigned int UpperI;
 		unsigned int LowerJ;
@@ -259,7 +258,7 @@ void CLookUpTable::SetTDState_rhoe (su2double rho, su2double e ) {
 		if (jIndex>=0) LowerJ = jIndex; UpperJ = jIndex+floor(p_dim/4.0);
 
 
-		//Detemine the I index: assume rho is equispaced
+		//Detemine the I index: assume rho is equispaced (no restart)
 		LowerI = floor((rho-Density_limits[0])/(Density_limits[1]-Density_limits[0])*(rho_dim-1));
 		UpperI = LowerI + 1;
 
@@ -298,83 +297,44 @@ void CLookUpTable::SetTDState_rhoe (su2double rho, su2double e ) {
 		//Now use the closest fit box to interpolate
 
 
-
-		su2double StaticEnergy = e;
-		su2double Density      = rho;
-		su2double Entropy      = Interp2D_lin(ThermoTables[iIndex-1][jIndex-1].Entropy,
-				ThermoTables[iIndex-1][jIndex].Entropy,ThermoTables[iIndex][jIndex-1].Entropy,
-				ThermoTables[iIndex][jIndex].Entropy );
-		su2double Pressure     = Interp2D_lin(ThermoTables[iIndex-1][jIndex-1].Pressure,
-				ThermoTables[iIndex-1][jIndex].Pressure,ThermoTables[iIndex][jIndex-1].Pressure,
-				ThermoTables[iIndex][jIndex].Pressure );
-		su2double SoundSpeed2  = Interp2D_lin(ThermoTables[iIndex-1][jIndex-1].SoundSpeed2,
-				ThermoTables[iIndex-1][jIndex].SoundSpeed2,ThermoTables[iIndex][jIndex-1].SoundSpeed2,
-				ThermoTables[iIndex][jIndex].SoundSpeed2 );
-		su2double Temperature  = Interp2D_lin(ThermoTables[iIndex-1][jIndex-1].Temperature,
-				ThermoTables[iIndex-1][jIndex].Temperature,ThermoTables[iIndex][jIndex-1].Temperature,
-				ThermoTables[iIndex][jIndex].Temperature );
-		su2double dPdrho_e     = Interp2D_lin(ThermoTables[iIndex-1][jIndex-1].dPdrho_e,
-				ThermoTables[iIndex-1][jIndex].dPdrho_e,ThermoTables[iIndex][jIndex-1].dPdrho_e,
-				ThermoTables[iIndex][jIndex].dPdrho_e );
-		su2double dPde_rho     = Interp2D_lin(ThermoTables[iIndex-1][jIndex-1].dPde_rho,
-				ThermoTables[iIndex-1][jIndex].dPde_rho,ThermoTables[iIndex][jIndex-1].dPde_rho,
-				ThermoTables[iIndex][jIndex].dPde_rho );
-		su2double dTdrho_e     =  Interp2D_lin(ThermoTables[iIndex-1][jIndex-1].dTdrho_e,
-				ThermoTables[iIndex-1][jIndex].dTdrho_e,ThermoTables[iIndex][jIndex-1].dTdrho_e,
-				ThermoTables[iIndex][jIndex].dTdrho_e );
-		su2double dTde_rho     =  Interp2D_lin(ThermoTables[iIndex-1][jIndex-1].dTde_rho,
-				ThermoTables[iIndex-1][jIndex].dTde_rho,ThermoTables[iIndex][jIndex-1].dTde_rho,
-				ThermoTables[iIndex][jIndex].dTde_rho );
-		su2double Cp           =  Interp2D_lin(ThermoTables[iIndex-1][jIndex-1].Cp,
-				ThermoTables[iIndex-1][jIndex].Cp,ThermoTables[iIndex][jIndex-1].Cp,
-				ThermoTables[iIndex][jIndex].Cp );
-		su2double Mu 		   =  Interp2D_lin(ThermoTables[iIndex-1][jIndex-1].Mu,
-				ThermoTables[iIndex-1][jIndex].Mu,ThermoTables[iIndex][jIndex-1].Mu,
-				ThermoTables[iIndex][jIndex].Mu );
-		su2double dmudrho_T    =  Interp2D_lin(ThermoTables[iIndex-1][jIndex-1].dmudrho_T,
-				ThermoTables[iIndex-1][jIndex].dmudrho_T,ThermoTables[iIndex][jIndex-1].dmudrho_T,
-				ThermoTables[iIndex][jIndex].dmudrho_T );
-		su2double dmudT_rho    =  Interp2D_lin(ThermoTables[iIndex-1][jIndex-1].dmudT_rho,
-				ThermoTables[iIndex-1][jIndex].dmudT_rho,ThermoTables[iIndex][jIndex-1].dmudT_rho,
-				ThermoTables[iIndex][jIndex].dmudT_rho );
-		su2double Kt           =  Interp2D_lin(ThermoTables[iIndex-1][jIndex-1].Kt,
-				ThermoTables[iIndex-1][jIndex].Kt,ThermoTables[iIndex][jIndex-1].Kt,
-				ThermoTables[iIndex][jIndex].Kt );
-		su2double dktdrho_T    =  Interp2D_lin(ThermoTables[iIndex-1][jIndex-1].dktdrho_T,
-				ThermoTables[iIndex-1][jIndex].dktdrho_T,ThermoTables[iIndex][jIndex-1].dktdrho_T,
-				ThermoTables[iIndex][jIndex].dktdrho_T );
-		su2double dktdT_rho    =  Interp2D_lin(ThermoTables[iIndex-1][jIndex-1].dktdT_rho,
-				ThermoTables[iIndex-1][jIndex].dktdT_rho,ThermoTables[iIndex][jIndex-1].dktdT_rho,
-				ThermoTables[iIndex][jIndex].dktdT_rho );
-
+		su2double x, y;
+		x = rho - ThermoTables[iIndex][jIndex].Density;
+		y = e - ThermoTables[iIndex][jIndex].StaticEnergy;
+		if (x<0 or y<0)
+		{
+			throw runtime_error("RHOE Incorrect interpolation quad selected (point outside of quad)");
+		}
+		CThermoList interpolated;
+		interpolated.StaticEnergy = e;
+		interpolated.Density      = rho;
+		interpolated.Entropy      = Interp2D_lin(x, y, "Entropy" );
+		interpolated.Pressure     = Interp2D_lin(x, y, "Pressure" );
+		interpolated.SoundSpeed2  = Interp2D_lin(x, y, "SoundSpeed2" );
+		interpolated.Temperature  = Interp2D_lin(x, y, "Temperature" );
+		interpolated.dPdrho_e     = Interp2D_lin(x, y, "dPdrho_e");
+		interpolated.dPde_rho     = Interp2D_lin(x, y, "dPde_rho");
+		interpolated.dTdrho_e     = Interp2D_lin(x, y, "dTdrho_e");
+		interpolated.dTde_rho     = Interp2D_lin(x, y, "dTde_rho");
+		interpolated.Cp           = Interp2D_lin(x, y, "Cp");
+		interpolated.Mu 		   = Interp2D_lin(x, y, "Mu");
+		interpolated.dmudrho_T    = Interp2D_lin(x, y, "dmudrho_T");
+		interpolated.dmudT_rho    = Interp2D_lin(x, y, "dmudT_rho");
+		interpolated.Kt           = Interp2D_lin(x, y, "Kt");
+		interpolated.dktdrho_T    = Interp2D_lin(x, y, "dktdrho_T");
+		interpolated.dktdT_rho    = Interp2D_lin(x, y, "dktdT_rho");
+		//Intermediate variables only needed for StandAlone version
+		su2double Density = interpolated.Density;
+		su2double Pressure = interpolated.Pressure;
 		if ((Density>Density_limits[1]) or (Density<Density_limits[0]))
 		{
-
-			throw runtime_error(string("RHOE Interpolated Density out of bounds, using closest fit"));
-
+			throw runtime_error("RHOE Interpolated Density out of bounds");
 		}
 		if ((Pressure>Pressure_limits[1]) or (Pressure<Pressure_limits[0]))
 		{
-			throw runtime_error(string("RHOE Interpolated Pressure out of bounds, using closest fit"));
+			throw runtime_error("RHOE Interpolated Pressure out of bounds");
 		}
 		cout<<"Interpolated fit:"<<endl;
-		cout<<"StaticEnergy:"<<StaticEnergy<<endl;
-		cout<<"Entropy     :"<<Entropy<<endl;
-		cout<<"Density     :"<<Density<<endl;
-		cout<<"Pressure    :"<<Pressure<<endl;
-		cout<<"SoundSpeed2 :"<<SoundSpeed2<<endl;
-		cout<<"Temperature :"<<Temperature<<endl;
-		cout<<"dPdrho_e    :"<<dPdrho_e<<endl;
-		cout<<"dPde_rho    :"<<dPde_rho<<endl;
-		cout<<"dTdrho_e    :"<<dTdrho_e<<endl;
-		cout<<"dTde_rho    :"<<dTde_rho<<endl;
-		cout<<"Cp          :"<<Cp<<endl;
-		cout<<"Mu          :"<<Mu<<endl;
-		cout<<"dmudrho_T   :"<<dmudrho_T<<endl;
-		cout<<"dmudT_rho   :"<<dmudT_rho<<endl;
-		cout<<"Kt          :"<<Kt<<endl;
-		cout<<"dktdrho_T   :"<<dktdrho_T<<endl;
-		cout<<"dktdT_rho   :"<<dktdT_rho<<endl;
+		interpolated.CTLprint();
 	}
 	catch (exception& e)
 	{
@@ -413,20 +373,84 @@ void CLookUpTable::SetTDState_rhoT (su2double rho, su2double T ) {
 
 
 }
-void CLookUpTable::Interp2D_SingleSkewCoeff(std::string s)
-{
 
-	return;
-}
 
-void CLookUpTable::Interp2D_ArbitrarySkewCoeff(std::string s)
+void CLookUpTable::Interp2D_ArbitrarySkewCoeff(std::string grid_var)
 {
-	su2double dx10,	dx01, dx11, dy10, dy01, dy11, f00, f10,	f11, f01;
+	//Distances in along x and y axis are taken relative to i,j point (x00, y00).
+	//This reduces the interpolation to a 3by3 system rather than 4by4
+	su2double x00, y00, dx10, dx01, dx11, dy10, dy01, dy11;
+	//Interpolation LHM
 	su2double A[3][3];
-	su2double I[3][3];
+	//Helper variable for Gaussian elimination
 	su2double c;
 	//Load int the coordinates of the qudrilateral (values relative to i,j)
-
+	if(grid_var=="RHOE")
+	{
+		x00  = ThermoTables[iIndex  ][jIndex  ].Density     ;
+		y00  = ThermoTables[iIndex  ][jIndex  ].StaticEnergy;
+		dx01 = ThermoTables[iIndex  ][jIndex+1].Density      -x00;
+		dy01 = ThermoTables[iIndex  ][jIndex+1].StaticEnergy -y00;
+		dx10 = ThermoTables[iIndex+1][jIndex  ].Density      -x00;
+		dy10 = ThermoTables[iIndex+1][jIndex  ].StaticEnergy -y00;
+		dx11 = ThermoTables[iIndex+1][jIndex+1].Density      -x00;
+		dy11 = ThermoTables[iIndex+1][jIndex+1].StaticEnergy -y00;
+	}
+	else if(grid_var=="PT")
+	{
+		x00  = ThermoTables[iIndex  ][jIndex  ].Pressure   ;
+		y00  = ThermoTables[iIndex  ][jIndex  ].Temperature;
+		dx01 = ThermoTables[iIndex  ][jIndex+1].Pressure    -x00;
+		dy01 = ThermoTables[iIndex  ][jIndex+1].Temperature -y00;
+		dx10 = ThermoTables[iIndex+1][jIndex  ].Pressure    -x00;
+		dy10 = ThermoTables[iIndex+1][jIndex  ].Temperature -y00;
+		dx11 = ThermoTables[iIndex+1][jIndex+1].Pressure    -x00;
+		dy11 = ThermoTables[iIndex+1][jIndex+1].Temperature -y00;
+	}
+	else if(grid_var=="PRHO")
+	{
+		x00  = ThermoTables[iIndex  ][jIndex  ].Pressure;
+		y00  = ThermoTables[iIndex  ][jIndex  ].Density ;
+		dx01 = ThermoTables[iIndex  ][jIndex+1].Pressure -x00;
+		dy01 = ThermoTables[iIndex  ][jIndex+1].Density  -y00;
+		dx10 = ThermoTables[iIndex+1][jIndex  ].Pressure -x00;
+		dy10 = ThermoTables[iIndex+1][jIndex  ].Density  -y00;
+		dx11 = ThermoTables[iIndex+1][jIndex+1].Pressure -x00;
+		dy11 = ThermoTables[iIndex+1][jIndex+1].Density  -y00;
+	}
+	else if(grid_var=="RHOT")
+	{
+		x00  = ThermoTables[iIndex  ][jIndex  ].Density    ;
+		y00  = ThermoTables[iIndex  ][jIndex  ].Temperature;
+		dx01 = ThermoTables[iIndex  ][jIndex+1].Density     -x00;
+		dy01 = ThermoTables[iIndex  ][jIndex+1].Temperature -y00;
+		dx10 = ThermoTables[iIndex+1][jIndex  ].Density     -x00;
+		dy10 = ThermoTables[iIndex+1][jIndex  ].Temperature -y00;
+		dx11 = ThermoTables[iIndex+1][jIndex+1].Density     -x00;
+		dy11 = ThermoTables[iIndex+1][jIndex+1].Temperature -y00;
+	}
+	else if(grid_var=="PS")
+	{
+		x00  = ThermoTables[iIndex  ][jIndex  ].Pressure;
+		y00  = ThermoTables[iIndex  ][jIndex  ].Entropy ;
+		dx01 = ThermoTables[iIndex  ][jIndex+1].Pressure -x00;
+		dy01 = ThermoTables[iIndex  ][jIndex+1].Entropy  -y00;
+		dx10 = ThermoTables[iIndex+1][jIndex  ].Pressure -x00;
+		dy10 = ThermoTables[iIndex+1][jIndex  ].Entropy  -y00;
+		dx11 = ThermoTables[iIndex+1][jIndex+1].Pressure -x00;
+		dy11 = ThermoTables[iIndex+1][jIndex+1].Entropy  -y00;
+	}
+	else if(grid_var=="HS")
+	{
+		x00  = ThermoTables[iIndex  ][jIndex  ].StaticEnergy;
+		y00  = ThermoTables[iIndex  ][jIndex  ].Entropy     ;
+		dx01 = ThermoTables[iIndex  ][jIndex+1].StaticEnergy -x00;
+		dy01 = ThermoTables[iIndex  ][jIndex+1].Entropy      -y00;
+		dx10 = ThermoTables[iIndex+1][jIndex  ].StaticEnergy -x00;
+		dy10 = ThermoTables[iIndex+1][jIndex  ].Entropy      -y00;
+		dx11 = ThermoTables[iIndex+1][jIndex+1].StaticEnergy -x00;
+		dy11 = ThermoTables[iIndex+1][jIndex+1].Entropy      -y00;
+	}
 	//Setup the LHM matrix for the interpolation
 	A[0][0] = dx10;
 	A[0][1] = dy10;
@@ -437,22 +461,29 @@ void CLookUpTable::Interp2D_ArbitrarySkewCoeff(std::string s)
 	A[2][0] = dx11;
 	A[2][1] = dy11;
 	A[2][2] = dx11*dy11;
-	I[0][0] = 1;
-	I[1][1] = 1;
-	I[2][2] = 1;
+	//Store the inverse of the LHM matrix as coeff
+	coeff[0][0] = 1;
+	coeff[0][1] = 0;
+	coeff[0][2] = 0;
+	coeff[1][0] = 1;
+	coeff[1][1] = 1;
+	coeff[1][2] = 1;
+	coeff[2][0] = 1;
+	coeff[2][1] = 1;
+	coeff[2][2] = 1;
 
 	//Compute inverse of LHM using Gaussian elimination
 	//Reduced Echelon form of the LHM
-	if (A[0,0] != 0)
+	if (A[0][0] != 0)
 	{
 		c = A[1][0]/A[0][0];
-		I[1][0] = I[1][0] -I[0][0]*c;
+		coeff[1][0] = coeff[1][0] -coeff[0][0]*c;
 		for (int i=0; i<3; i++)
 		{
 			A[1][i] = A[1][i] -A[0][i]*c;
 		}
 		c =A[2][0]/A[0][0];
-		I[2][0] = I[2][0] -I[0][0]*c;
+		coeff[2][0] = coeff[2][0] -coeff[0][0]*c;
 
 		for (int i=0; i<3; i++)
 		{
@@ -465,7 +496,7 @@ void CLookUpTable::Interp2D_ArbitrarySkewCoeff(std::string s)
 		c = A[2][1]/A[1][1];
 		for (int i=0; i<2; i++)
 		{
-			I[2][i] = I[2][i] -I[1][i]*c;
+			coeff[2][i] = coeff[2][i] -coeff[1][i]*c;
 		}
 		for (int i=0; i<3; i++)
 			A[2][i] = A[2][i] -A[1][i]*c;
@@ -476,19 +507,19 @@ void CLookUpTable::Interp2D_ArbitrarySkewCoeff(std::string s)
 
 		for (int i=0; i<3; i++)
 		{
-			I[1][i] = I[1][i] -I[2][i]*A[1][2]/A[2][2];
+			coeff[1][i] = coeff[1][i] -coeff[2][i]*A[1][2]/A[2][2];
 		}
 		A[1][2] = 0;
 		for (int i=0; i<3; i++)
 		{
-			I[0][i] = I[0][i] -I[2][i]*A[0][2]/A[2][2];
+			coeff[0][i] = coeff[0][i] -coeff[2][i]*A[0][2]/A[2][2];
 		}
 		A[0][2] = 0;
 	}
 	if (A[1][1] != 0)
 	{
 		for (int i=0; i<3; i++)
-			I[0][i] = I[0][i] -I[1][i]*A[0][1]/A[1][1];
+			coeff[0][i] = coeff[0][i] -coeff[1][i]*A[0][1]/A[1][1];
 	}
 	A[0][1] = 0;
 
@@ -497,20 +528,20 @@ void CLookUpTable::Interp2D_ArbitrarySkewCoeff(std::string s)
 	{
 		for (int i=0; i<3; i++)
 		{
-			I[0][i] = I[0][i]/A[0][0];
+			coeff[0][i] = coeff[0][i]/A[0][0];
 		}
 		if (A[1][1] != 0)
 		{
 			for (int i=0; i<3; i++)
 			{
-				I[1][i] = I[1][i]/A[1][1];
+				coeff[1][i] = coeff[1][i]/A[1][1];
 			}
 		}
 		if (A[2][2] != 0)
 		{
 			for (int i=0; i<3; i++)
 			{
-				I[2][i] = I[2][i]/A[2][2];
+				coeff[2][i] = coeff[2][i]/A[2][2];
 			}
 
 		}
@@ -518,9 +549,153 @@ void CLookUpTable::Interp2D_ArbitrarySkewCoeff(std::string s)
 	return;
 }
 
-su2double CLookUpTable::Interp2D_lin(su2double aa, su2double ab, su2double ba, su2double bb){
+su2double CLookUpTable::Interp2D_lin(su2double x, su2double y, string interpolant_var)
+{
+	//F is the RHS part of the interpolation equation
+	su2double F[3];
+	//The solution vector for the interpolation equation
+	su2double C[3];
+	//The function values
+	su2double f00, f10, f01, f11;
+	//For each case the values are filled differently
+	if(interpolant_var=="StaticEnergy")
+	{
+		f00 = ThermoTables[iIndex  ][jIndex  ].StaticEnergy;
+		f10 = ThermoTables[iIndex+1][jIndex  ].StaticEnergy;
+		f01 = ThermoTables[iIndex  ][jIndex+1].StaticEnergy;
+		f11 = ThermoTables[iIndex+1][jIndex+1].StaticEnergy;
+	}
+	else if(interpolant_var=="Entropy")
+	{
+		f00 = ThermoTables[iIndex  ][jIndex  ].Entropy;
+		f10 = ThermoTables[iIndex+1][jIndex  ].Entropy;
+		f01 = ThermoTables[iIndex  ][jIndex+1].Entropy;
+		f11 = ThermoTables[iIndex+1][jIndex+1].Entropy;
+	}
+	else if(interpolant_var=="Density")
+	{
+		f00 = ThermoTables[iIndex  ][jIndex  ].Density;
+		f10 = ThermoTables[iIndex+1][jIndex  ].Density;
+		f01 = ThermoTables[iIndex  ][jIndex+1].Density;
+		f11 = ThermoTables[iIndex+1][jIndex+1].Density;
+	}
+	else if(interpolant_var=="Pressure")
+	{
+		f00 = ThermoTables[iIndex  ][jIndex  ].Pressure;
+		f10 = ThermoTables[iIndex+1][jIndex  ].Pressure;
+		f01 = ThermoTables[iIndex  ][jIndex+1].Pressure;
+		f11 = ThermoTables[iIndex+1][jIndex+1].Pressure;
+	}
+	else if(interpolant_var=="SoundSpeed2")
+	{
+		f00 = ThermoTables[iIndex  ][jIndex  ].SoundSpeed2;
+		f10 = ThermoTables[iIndex+1][jIndex  ].SoundSpeed2;
+		f01 = ThermoTables[iIndex  ][jIndex+1].SoundSpeed2;
+		f11 = ThermoTables[iIndex+1][jIndex+1].SoundSpeed2;
+	}
+	else if(interpolant_var=="Temperature")
+	{
+		f00 = ThermoTables[iIndex  ][jIndex  ].Temperature;
+		f10 = ThermoTables[iIndex+1][jIndex  ].Temperature;
+		f01 = ThermoTables[iIndex  ][jIndex+1].Temperature;
+		f11 = ThermoTables[iIndex+1][jIndex+1].Temperature;
+	}
+	else if(interpolant_var=="dPdrho_e")
+	{
+		f00 = ThermoTables[iIndex  ][jIndex  ].dPdrho_e;
+		f10 = ThermoTables[iIndex+1][jIndex  ].dPdrho_e;
+		f01 = ThermoTables[iIndex  ][jIndex+1].dPdrho_e;
+		f11 = ThermoTables[iIndex+1][jIndex+1].dPdrho_e;
+	}
+	else if(interpolant_var=="dPde_rho")
+	{
+		f00 = ThermoTables[iIndex  ][jIndex  ].dPde_rho;
+		f10 = ThermoTables[iIndex+1][jIndex  ].dPde_rho;
+		f01 = ThermoTables[iIndex  ][jIndex+1].dPde_rho;
+		f11 = ThermoTables[iIndex+1][jIndex+1].dPde_rho;
+	}
+	else if(interpolant_var=="dTdrho_e")
+	{
+		f00 = ThermoTables[iIndex  ][jIndex  ].dTdrho_e;
+		f10 = ThermoTables[iIndex+1][jIndex  ].dTdrho_e;
+		f01 = ThermoTables[iIndex  ][jIndex+1].dTdrho_e;
+		f11 = ThermoTables[iIndex+1][jIndex+1].dTdrho_e;
+	}
+	else if(interpolant_var=="dTde_rho")
+	{
+		f00 = ThermoTables[iIndex  ][jIndex  ].dTde_rho;
+		f10 = ThermoTables[iIndex+1][jIndex  ].dTde_rho;
+		f01 = ThermoTables[iIndex  ][jIndex+1].dTde_rho;
+		f11 = ThermoTables[iIndex+1][jIndex+1].dTde_rho;
+	}
+	else if(interpolant_var=="Cp")
+	{
+		f00 = ThermoTables[iIndex  ][jIndex  ].Cp;
+		f10 = ThermoTables[iIndex+1][jIndex  ].Cp;
+		f01 = ThermoTables[iIndex  ][jIndex+1].Cp;
+		f11 = ThermoTables[iIndex+1][jIndex+1].Cp;
+	}
+	else if(interpolant_var=="Mu")
+	{
+		f00 = ThermoTables[iIndex  ][jIndex  ].Mu;
+		f10 = ThermoTables[iIndex+1][jIndex  ].Mu;
+		f01 = ThermoTables[iIndex  ][jIndex+1].Mu;
+		f11 = ThermoTables[iIndex+1][jIndex+1].Mu;
+	}
+	else if(interpolant_var=="dmudrho_T")
+	{
+		f00 = ThermoTables[iIndex  ][jIndex  ].dmudrho_T;
+		f10 = ThermoTables[iIndex+1][jIndex  ].dmudrho_T;
+		f01 = ThermoTables[iIndex  ][jIndex+1].dmudrho_T;
+		f11 = ThermoTables[iIndex+1][jIndex+1].dmudrho_T;
+	}
+	else if(interpolant_var=="dmudT_rho")
+	{
+		f00 = ThermoTables[iIndex  ][jIndex  ].dmudT_rho;
+		f10 = ThermoTables[iIndex+1][jIndex  ].dmudT_rho;
+		f01 = ThermoTables[iIndex  ][jIndex+1].dmudT_rho;
+		f11 = ThermoTables[iIndex+1][jIndex+1].dmudT_rho;
+	}
+	else if(interpolant_var=="Kt")
+	{
+		f00 = ThermoTables[iIndex  ][jIndex  ].Kt;
+		f10 = ThermoTables[iIndex+1][jIndex  ].Kt;
+		f01 = ThermoTables[iIndex  ][jIndex+1].Kt;
+		f11 = ThermoTables[iIndex+1][jIndex+1].Kt;
+	}
+	else if(interpolant_var=="dktdrho_T")
+	{
+		f00 = ThermoTables[iIndex  ][jIndex  ].dktdrho_T;
+		f10 = ThermoTables[iIndex+1][jIndex  ].dktdrho_T;
+		f01 = ThermoTables[iIndex  ][jIndex+1].dktdrho_T;
+		f11 = ThermoTables[iIndex+1][jIndex+1].dktdrho_T;
+	}
+	else if(interpolant_var=="dktdT_rho")
+	{
+		f00 = ThermoTables[iIndex  ][jIndex  ].dktdT_rho;
+		f10 = ThermoTables[iIndex+1][jIndex  ].dktdT_rho;
+		f01 = ThermoTables[iIndex  ][jIndex+1].dktdT_rho;
+		f11 = ThermoTables[iIndex+1][jIndex+1].dktdT_rho;
+	}
 
+	//Using offset relative to i,j point yields a 3by3 system rather than 4by4
+	F[0] = f10 - f00;
+	C[0] = 0;
+	F[1] = f01 - f00;
+	C[1] = 0;
+	F[2] = f11 - f00;
+	C[2] = 0;
+	for (int i = 0; i<3; i++)
+	{
+		for (int j=0; j<3; j++)
+		{
+			C[i] = C[i] + F[i]*coeff[i][j];
+		}
+	}
+
+	return f00 + C[0]*x + C[1]*y + C[2]*x*y;
 }
+
 
 void CLookUpTable::LUTprint(void)
 {
@@ -534,7 +709,7 @@ void CLookUpTable::LUTprint(void)
 }
 
 
-void CLookUpTable::TableLoadCFX(char *filename){
+void CLookUpTable::TableLoadCFX(char* filename){
 	int N_PARAM = 0;
 	int set_x = 0;
 	int set_y = 0;
@@ -543,6 +718,7 @@ void CLookUpTable::TableLoadCFX(char *filename){
 
 	string line;
 	string value;
+
 
 	ifstream table (filename);
 	assert(table.is_open());

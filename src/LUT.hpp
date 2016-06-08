@@ -2,7 +2,7 @@
 #include <string>
 class CThermoList {
 public:
-	su2double   	 StaticEnergy,			/*!< \brief Internal Energy. */
+	su2double StaticEnergy,			/*!< \brief Internal Energy. */
 	Entropy,  				/*!< \brief Entropy. */
 	Density,  				/*!< \brief Density. */
 	Pressure, 				/*!< \brief Pressure. */
@@ -90,7 +90,7 @@ public:
 	 * \param[in] thermo2 - second thermodynamic variable
 	 * \param[in] input thermodynamic pair.
 	 */
-	void SearchKD_Tree (su2double thermo1, su2double thermo2,  char* thermoPair);
+	void SearchKD_Tree (su2double thermo1, su2double thermo2,  std::string thermoPair);
 	void SearchZigZag (su2double thermo1, su2double thermo2,  unsigned long thermoPair );
 	void SearchThermoPair (su2double thermo1, su2double thermo2,  unsigned long thermoPair );
 
@@ -107,8 +107,6 @@ public:
 	 * \param[in] P - first thermodynamic variable.
 	 * \param[in] T - second thermodynamic variable.
 	 */
-
-	void SearchThermoRHOE (su2double rho, su2double e);
 
 	void SetTDState_PT (su2double P, su2double T );
 
@@ -150,9 +148,9 @@ public:
 	 */
 
 	void SetTDState_Ps (su2double P, su2double s );
-	void Interp2D_SingleSkewCoeff(std::string s);
-	void Interp2D_ArbitrarySkewCoeff(std::string s);
-	su2double Interp2D_lin(su2double aa, su2double ab, su2double ba, su2double bb);
+	void Interp2D_SingleSkewCoeff(std::string grid_var);
+	void Interp2D_ArbitrarySkewCoeff(std::string grid_var);
+	su2double Interp2D_lin(su2double x, su2double y, std::string interpolant_var);
 	void TableLoadCFX(char* filename);
 	void LUTprint(void);
 
