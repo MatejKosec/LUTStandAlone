@@ -7,6 +7,7 @@
 #include "stdlib.h"
 #include "stdio.h"
 #include "LUT.hpp"
+#include <iomanip>
 
 using namespace std;
 CThermoList::CThermoList(){
@@ -235,17 +236,17 @@ void CLookUpTable::SearchZigZag (su2double thermo1, su2double thermo2,  unsigned
 void CLookUpTable::SetTDState_rhoe (su2double rho, su2double e ) {
 	try
 	{
-		//Check if inputs are in range (not a complete 2D check)
+		//Check if inputs are in total range (necessary but not sufficient condition)
 		if ((rho>Density_limits[1]) or (rho<Density_limits[0]))
 		{
 			throw runtime_error("RHOE Input Density out of bounds");
 		}
 		if ((e>StaticEnergy_limits[1]) or (e<StaticEnergy_limits[0]))
-		{	cout<<StaticEnergy_limits[0]<<" "<<StaticEnergy_limits[1]<<" "<<e<<endl;
-		throw runtime_error("RHOE Input StaticEnergy out of bounds");
+		{
+			throw runtime_error("RHOE Input StaticEnergy out of bounds");
 		}
-		cout<<endl<<"Rho desired : "<<rho<<std::endl;
-		cout<<"E desired   : "<<e<<std::endl;
+		cout<<endl<<"rho desired : "<<rho<<std::endl;
+		cout<<"e desired   : "<<e<<std::endl;
 
 		su2double RunVal;
 		unsigned int CFL    = 2;
@@ -253,16 +254,16 @@ void CLookUpTable::SetTDState_rhoe (su2double rho, su2double e ) {
 		unsigned int UpperI;
 		unsigned int LowerJ;
 		unsigned int UpperJ;
-		//Restart search from previously used index if it exists
+		//Restart search from previously used index if it exists, else go to middle
 		if (jIndex<0) LowerJ = 0; UpperJ = ceil(p_dim/2);
 		if (jIndex>=0) LowerJ = jIndex; UpperJ = jIndex+floor(p_dim/4.0);
 
 
-		//Detemine the I index: assume rho is equispaced (no restart)
+		//Detemine the I index: rho is equispaced (no restart)
 		LowerI = floor((rho-Density_limits[0])/(Density_limits[1]-Density_limits[0])*(rho_dim-1));
 		UpperI = LowerI + 1;
 
-		//Determine the J index (for StaticEnergy), (Density invariant with j)
+		//Determine the J index (for e), (e invariant with j)
 		while(UpperJ-LowerJ>1)
 		{
 			//Load the value at the upper bound
@@ -300,31 +301,40 @@ void CLookUpTable::SetTDState_rhoe (su2double rho, su2double e ) {
 		su2double x, y;
 		x = rho - ThermoTables[iIndex][jIndex].Density;
 		y = e - ThermoTables[iIndex][jIndex].StaticEnergy;
-		if (x<0 or y<0)
+		if (false)//(x<0 or y<0)
 		{
 			throw runtime_error("RHOE Incorrect interpolation quad selected (point outside of quad)");
 		}
+		//Determine interpolation coefficients
+		Interp2D_ArbitrarySkewCoeff("RHOE");
+		cout<<"Interpolation matrix inverse \n";
+		for (int j=0; j<3; j++)
+		{
+			cout<<setw(15)<<coeff[j][0]<<"   "<<coeff[j][1]<<"   "<<coeff[j][2]<<endl;
+		}
 		CThermoList interpolated;
-		interpolated.StaticEnergy = e;
-		interpolated.Density      = rho;
-		interpolated.Entropy      = Interp2D_lin(x, y, "Entropy" );
-		interpolated.Pressure     = Interp2D_lin(x, y, "Pressure" );
-		interpolated.SoundSpeed2  = Interp2D_lin(x, y, "SoundSpeed2" );
-		interpolated.Temperature  = Interp2D_lin(x, y, "Temperature" );
-		interpolated.dPdrho_e     = Interp2D_lin(x, y, "dPdrho_e");
-		interpolated.dPde_rho     = Interp2D_lin(x, y, "dPde_rho");
-		interpolated.dTdrho_e     = Interp2D_lin(x, y, "dTdrho_e");
-		interpolated.dTde_rho     = Interp2D_lin(x, y, "dTde_rho");
-		interpolated.Cp           = Interp2D_lin(x, y, "Cp");
-		interpolated.Mu 		   = Interp2D_lin(x, y, "Mu");
-		interpolated.dmudrho_T    = Interp2D_lin(x, y, "dmudrho_T");
-		interpolated.dmudT_rho    = Interp2D_lin(x, y, "dmudT_rho");
-		interpolated.Kt           = Interp2D_lin(x, y, "Kt");
-		interpolated.dktdrho_T    = Interp2D_lin(x, y, "dktdrho_T");
-		interpolated.dktdT_rho    = Interp2D_lin(x, y, "dktdT_rho");
+		interpolated.StaticEnergy      = e;
+		interpolated.Density           = rho ;
+		interpolated.Entropy           = Interp2D_lin(x, y, "Entropy" );
+		interpolated.Pressure          = Interp2D_lin(x, y, "Pressure" );
+		interpolated.SoundSpeed2       = Interp2D_lin(x, y, "SoundSpeed2" );
+		interpolated.Temperature       = Interp2D_lin(x, y, "Temperature" );
+		interpolated.dPdrho_e          = Interp2D_lin(x, y, "dPdrho_e" );
+		interpolated.dPde_rho          = Interp2D_lin(x, y, "dPde_rho" );
+		interpolated.dTdrho_e          = Interp2D_lin(x, y, "dTdrho_e" );
+		interpolated.dTde_rho          = Interp2D_lin(x, y, "dTde_rho" );
+		interpolated.Cp                = Interp2D_lin(x, y, "Cp" );
+		interpolated.Mu                = Interp2D_lin(x, y, "Mu" );
+		interpolated.dmudrho_T         = Interp2D_lin(x, y, "dmudrho_T" );
+		interpolated.dmudT_rho         = Interp2D_lin(x, y, "dmudT_rho" );
+		interpolated.Kt                = Interp2D_lin(x, y, "Kt" );
+		interpolated.dktdrho_T         = Interp2D_lin(x, y, "dktdrho_T" );
+		interpolated.dktdT_rho         = Interp2D_lin(x, y, "dktdT_rho" );
 		//Intermediate variables only needed for StandAlone version
 		su2double Density = interpolated.Density;
 		su2double Pressure = interpolated.Pressure;
+		cout<<"Interpolated fit:"<<endl;
+		interpolated.CTLprint ();
 		if ((Density>Density_limits[1]) or (Density<Density_limits[0]))
 		{
 			throw runtime_error("RHOE Interpolated Density out of bounds");
@@ -333,20 +343,17 @@ void CLookUpTable::SetTDState_rhoe (su2double rho, su2double e ) {
 		{
 			throw runtime_error("RHOE Interpolated Pressure out of bounds");
 		}
-		cout<<"Interpolated fit:"<<endl;
-		interpolated.CTLprint();
+
 	}
 	catch (exception& e)
 	{
-		cerr<<'\n'<< e.what() << '\n';
+		cerr<<"\n"<< e.what() << "\n";
 	}
-
 }
-
 
 void CLookUpTable::SetTDState_PT (su2double P, su2double T ) {
-
 }
+
 
 void CLookUpTable::SetTDState_Prho (su2double P, su2double rho ) {
 
@@ -384,7 +391,7 @@ void CLookUpTable::Interp2D_ArbitrarySkewCoeff(std::string grid_var)
 	su2double A[3][3];
 	//Helper variable for Gaussian elimination
 	su2double c;
-	//Load int the coordinates of the qudrilateral (values relative to i,j)
+	//Load in the coordinates of the qudrilateral (values relative to i,j)
 	if(grid_var=="RHOE")
 	{
 		x00  = ThermoTables[iIndex  ][jIndex  ].Density     ;
@@ -461,15 +468,23 @@ void CLookUpTable::Interp2D_ArbitrarySkewCoeff(std::string grid_var)
 	A[2][0] = dx11;
 	A[2][1] = dy11;
 	A[2][2] = dx11*dy11;
+	cout<<"Interpolation LHM matrix \n"<<"[";
+
+	for (int j=0; j<3; j++)
+	{
+		cout<<setw(15)<<"["<<A[j][0]<<" ,  "<<A[j][1]<<"  , "<<A[j][2]<<"]"<<endl;
+	}
+	cout<<"]\n";
+
 	//Store the inverse of the LHM matrix as coeff
 	coeff[0][0] = 1;
 	coeff[0][1] = 0;
 	coeff[0][2] = 0;
-	coeff[1][0] = 1;
+	coeff[1][0] = 0;
 	coeff[1][1] = 1;
-	coeff[1][2] = 1;
-	coeff[2][0] = 1;
-	coeff[2][1] = 1;
+	coeff[1][2] = 0;//solved interpolation bug
+	coeff[2][0] = 0;
+	coeff[2][1] = 0;
 	coeff[2][2] = 1;
 
 	//Compute inverse of LHM using Gaussian elimination
@@ -523,7 +538,7 @@ void CLookUpTable::Interp2D_ArbitrarySkewCoeff(std::string grid_var)
 	}
 	A[0][1] = 0;
 
-
+	//Normalize the RR Echelon form
 	if (A[0][0] != 0)
 	{
 		for (int i=0; i<3; i++)
@@ -796,15 +811,17 @@ void CLookUpTable::TableLoadCFX(char* filename){
 
 					//Fill in the pressures
 					su2double* vP = new su2double[set_y];
+					var_steps = 10; //solved pressure reading bug
 					Pressure_limits[0] = 10E15; //lower limit
 					Pressure_limits[1] = 0; //upper limit
-
+					//Each line contains at most 10 pressure values
 					for (int k =0; k<ceil(float(set_y)/10.0);k++)
 					{
 
 						getline(table,line);
 						cout<<line<<endl;
 						istringstream inP(line);
+						//Check if line contains less than 10 values
 						if ((set_y-k*10)<10) var_steps = (set_y-k*10);
 						for (int j =0; j<var_steps; j++)
 						{
