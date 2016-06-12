@@ -245,8 +245,8 @@ void CLookUpTable::SetTDState_rhoe (su2double rho, su2double e ) {
 		{
 			throw runtime_error("RHOE Input StaticEnergy out of bounds");
 		}
-		cout<<endl<<"rho desired : "<<rho<<std::endl;
-		cout<<"e desired   : "<<e<<std::endl;
+		cout<<endl<<"rho desired : "<<rho<<endl;
+		cout<<"e desired   : "<<e<<endl;
 
 		su2double RunVal;
 		unsigned int CFL    = 2;
@@ -257,9 +257,13 @@ void CLookUpTable::SetTDState_rhoe (su2double rho, su2double e ) {
 		//Restart search from previously used index if it exists, else go to middle
 		if (jIndex<0) LowerJ = 0;
 		if (jIndex>=0) LowerJ = jIndex;
-		UpperJ = ceil(p_dim/2);
+		if (jIndex<ceil(p_dim/2))
+		{
+			UpperJ = ceil(p_dim/2);
+		}
+		else UpperJ=p_dim;
 
-		//Detemine the I index: rho is equispaced (no restart)
+		//Determine the I index: rho is equispaced (no restart)
 		LowerI = floor((rho-Density_limits[0])/(Density_limits[1]-Density_limits[0])*(rho_dim-1));
 		UpperI = LowerI + 1;
 
@@ -362,8 +366,8 @@ void CLookUpTable::SetTDState_PT (su2double P, su2double T ) {
 		{
 			throw runtime_error("PT Input Temperature out of bounds");
 		}
-		cout<<endl<<"P desired : "<<P<<std::endl;
-		cout<<"T desired   : "<<T<<std::endl;
+		cout<<endl<<"P desired : "<<P<<endl;
+		cout<<"T desired   : "<<T<<endl;
 
 		su2double RunVal;
 		unsigned int CFL = 2;
@@ -374,7 +378,12 @@ void CLookUpTable::SetTDState_PT (su2double P, su2double T ) {
 		//Restart search from previously used index if it exists, else go to middle
 		if (iIndex<0) LowerI = 0;
 		if (iIndex>=0) LowerI = iIndex;
-		UpperI = ceil(rho_dim/2); //probably can be made more efficient (smaller square)
+		if  (iIndex<ceil(rho_dim/2))
+		{
+			UpperI = ceil(rho_dim/2); //probably can be made more efficient (smaller square)
+		}
+		else UpperI = rho_dim;
+
 
 		//Determine the J index: P is equispaced (no restart)
 		LowerJ = floor((P-Pressure_limits[0])/(Pressure_limits[1]-Pressure_limits[0])*(p_dim-1));
@@ -382,9 +391,10 @@ void CLookUpTable::SetTDState_PT (su2double P, su2double T ) {
 
 		//Determine the I index (for T)
 		//Temperature is not necessarily monotonic (so use a variable to take care of overall sign)
+		int grad;
 		while(UpperI-LowerI>1)
 		{
-			int grad = ThermoTables[UpperI][UpperJ].Temperature - ThermoTables[LowerI][UpperJ].Temperature;
+			grad = ThermoTables[UpperI][UpperJ].Temperature - ThermoTables[LowerI][UpperJ].Temperature;
 			//Load the value at the upper bound
 			RunVal = ThermoTables[UpperI][UpperJ].Temperature;
 			if (grad*RunVal>grad*T)
@@ -478,15 +488,15 @@ void CLookUpTable::SetTDState_Prho (su2double P, su2double rho ) {
 		{
 			throw runtime_error("PRHO Input Density out of bounds");
 		}
-		cout<<endl<<"rho desired : "<<rho<<std::endl;
-		cout<<"P desired   : "<<P<<std::endl;
+		cout<<endl<<"rho desired : "<<rho<<endl;
+		cout<<"P desired   : "<<P<<endl;
 
 		unsigned int LowerI;
 		unsigned int UpperI;
 		unsigned int LowerJ;
 		unsigned int UpperJ;
 
-		//Detemine the I index: RHO is equispaced
+		//Determine the I index: RHO is equispaced
 		LowerI = floor((rho-Density_limits[0])/(Density_limits[1]-Density_limits[0])*(rho_dim-1));
 		UpperI = LowerI + 1;
 
@@ -569,14 +579,247 @@ void CLookUpTable::SetTDState_hs (su2double h, su2double s ) {
 
 }
 
-void CLookUpTable::SetTDState_Ps (su2double P, su2double s ){
+void CLookUpTable::SetTDState_Ps (su2double P, su2double s )
+{
+	try
+	{
+		//Check if inputs are in total range (necessary but not sufficient condition)
+		if ((P>Pressure_limits[1]) or (P<Pressure_limits[0]))
+		{
+			throw runtime_error("PS Input Pressure out of bounds");
+		}
+		if ((s>Entropy_limits[1]) or (s<Entropy_limits[0]))
+		{
+			throw runtime_error("PS Input Entropy  out of bounds");
+		}
+		cout<<endl<<"P desired : "<<P<<endl;
+		cout<<"s desired   : "<<s<<endl;
+
+		su2double RunVal;
+		unsigned int CFL = 2;
+		unsigned int LowerI;
+		unsigned int UpperI;
+		unsigned int LowerJ;
+		unsigned int UpperJ;
+		//Restart search from previously used index if it exists, else go to middle
+		if (iIndex<0) LowerI = 0;
+		if (iIndex>=0) LowerI = iIndex;
+		if  (iIndex<ceil(rho_dim/2))
+		{
+			UpperI = ceil(rho_dim/2); //probably can be made more efficient (smaller square)
+		}
+		else UpperI = rho_dim;
+
+		//Determine the I index: RHO is equispaced (no restart)
+		LowerJ = floor((P-Pressure_limits[0])/(Pressure_limits[1]-Pressure_limits[0])*(p_dim-1));
+		UpperJ = LowerJ + 1;
+
+		//Determine the J index (for s), (s invariant with j)
+		int grad;
+		while(UpperI-LowerI>1)
+		{
+			//Load the value at the upper bound
+			grad = ThermoTables[UpperI][UpperJ].Entropy - ThermoTables[LowerI][UpperJ].Entropy;
+			RunVal = ThermoTables[UpperI][UpperJ].Entropy ;
+			if (grad*RunVal>grad*s)
+			{
+				UpperI = LowerI + ceil((UpperI-LowerI)/CFL);
+			}
+			else if (grad*RunVal<grad*s)
+			{
+				int dif;
+				dif   = UpperI + ceil((UpperI-LowerI)/CFL);
+				LowerI = UpperI;
+				UpperI = dif;
+			}
+			cout<<LowerI<<"  "<<UpperI<<endl;
+		}
+
+		iIndex = LowerI;
+		jIndex = LowerJ;
+		cout<<"i "<<LowerI<<"  "<<UpperI<<endl;
+		cout<<"j "<<LowerJ<<"  "<<UpperJ<<endl;
 
 
+		cout<<"Closest fit box :"<<endl;
+		cout<<"Point i j :"<<endl;
+		ThermoTables[iIndex][jIndex].CTLprint();
+		cout<<"Point i+1 j :"<<endl;
+		ThermoTables[iIndex+1][jIndex].CTLprint();
+		cout<<"Point i j+1 :"<<endl;
+		ThermoTables[iIndex][jIndex+1].CTLprint();
+		cout<<"Point i+1 j+1 :"<<endl;
+		ThermoTables[iIndex+1][jIndex+1].CTLprint();
+		//Now use the closest fit box to interpolate
 
+
+		su2double x, y;
+		y = P - ThermoTables[iIndex][jIndex].Pressure;
+		x = s - ThermoTables[iIndex][jIndex].Entropy ;
+		//Determine interpolation coefficients
+		Interp2D_ArbitrarySkewCoeff(x,y,"PS");
+		cout<<"Interpolation matrix inverse \n";
+		for (int j=0; j<3; j++)
+		{
+			cout<<setw(15)<<coeff[j][0]<<"   "<<coeff[j][1]<<"   "<<coeff[j][2]<<endl;
+		}
+		CThermoList interpolated;
+		interpolated.Entropy           = s;
+		interpolated.Pressure          = P ;
+		interpolated.StaticEnergy      = Interp2D_lin(x, y, "StaticEnergy" );
+		interpolated.Density           = Interp2D_lin(x, y, "Density" );
+		interpolated.SoundSpeed2       = Interp2D_lin(x, y, "SoundSpeed2" );
+		interpolated.Temperature       = Interp2D_lin(x, y, "Temperature" );
+		interpolated.dPdrho_e          = Interp2D_lin(x, y, "dPdrho_e" );
+		interpolated.dPde_rho          = Interp2D_lin(x, y, "dPde_rho" );
+		interpolated.dTdrho_e          = Interp2D_lin(x, y, "dTdrho_e" );
+		interpolated.dTde_rho          = Interp2D_lin(x, y, "dTde_rho" );
+		interpolated.Cp                = Interp2D_lin(x, y, "Cp" );
+		interpolated.Mu                = Interp2D_lin(x, y, "Mu" );
+		interpolated.dmudrho_T         = Interp2D_lin(x, y, "dmudrho_T" );
+		interpolated.dmudT_rho         = Interp2D_lin(x, y, "dmudT_rho" );
+		interpolated.Kt                = Interp2D_lin(x, y, "Kt" );
+		interpolated.dktdrho_T         = Interp2D_lin(x, y, "dktdrho_T" );
+		interpolated.dktdT_rho         = Interp2D_lin(x, y, "dktdT_rho" );
+		//Intermediate variables only needed for StandAlone version
+		su2double Density = interpolated.Density;
+		su2double Pressure = interpolated.Pressure;
+		cout<<"Interpolated fit:"<<endl;
+		interpolated.CTLprint ();
+		if ((Density>Density_limits[1]) or (Density<Density_limits[0]))
+		{
+			throw runtime_error("PS Interpolated Density out of bounds");
+		}
+		if ((Pressure>Pressure_limits[1]) or (Pressure<Pressure_limits[0]))
+		{
+			throw runtime_error("PS Interpolated Pressure out of bounds");
+		}
+	}
+	catch (exception& e)
+	{
+		cerr<<"\n"<< e.what() << "\n";
+	}
 }
 
 void CLookUpTable::SetTDState_rhoT (su2double rho, su2double T ) {
+	try
+	{
+		//Check if inputs are in total range (necessary but not sufficient condition)
+		if ((rho>Density_limits[1]) or (rho<Density_limits[0]))
+		{
+			throw runtime_error("RHOT Input Density out of bounds");
+		}
+		if ((T>Temperature_limits[1]) or (T<Temperature_limits[0]))
+		{
+			throw runtime_error("RHOT Input Temperature out of bounds");
+		}
+		cout<<endl<<"rho desired : "<<rho<<endl;
+		cout<<"T desired   : "<<T<<endl;
 
+		su2double RunVal;
+		unsigned int CFL= 2;
+		unsigned int LowerI;
+		unsigned int UpperI;
+		unsigned int LowerJ;
+		unsigned int UpperJ;
+		//Restart search from previously used index if it exists, else go to middle
+		if (jIndex<0) LowerJ = 0;
+		if (jIndex>=0) LowerJ = jIndex;
+		if (jIndex<ceil(p_dim/2))
+		{
+			UpperJ = ceil(p_dim/2);
+		}
+		else UpperJ=p_dim;
+
+		//Determine the I index: RHO is equispaced (no restart)
+		LowerI = floor((rho-Density_limits[0])/(Density_limits[1]-Density_limits[0])*(rho_dim-1));
+		UpperI = LowerI + 1;
+
+		//Determine the I index (for T)
+		//Temperature is not necessarily monotonic (so use a variable to take care of overall sign)
+		while(UpperI-LowerI>1)
+		{
+			int grad = ThermoTables[UpperI][UpperJ].Temperature - ThermoTables[LowerI][UpperJ].Temperature;
+			//Load the value at the upper bound
+			RunVal = ThermoTables[UpperI][UpperJ].Temperature;
+			if (grad*RunVal>grad*T)
+			{
+				UpperI = LowerI + ceil((UpperI-LowerI)/CFL);
+			}
+			else if (grad*RunVal<grad*T)
+			{
+				int dif;
+				dif   = UpperI + ceil((UpperI-LowerI)/CFL);
+				LowerI = UpperI;
+				UpperI = dif;
+			}
+			cout<<LowerI<<"  "<<UpperI<<endl;
+		}
+
+		iIndex = LowerI;
+		jIndex = LowerJ;
+		cout<<"i "<<LowerI<<"  "<<UpperI<<endl;
+		cout<<"j "<<LowerJ<<"  "<<UpperJ<<endl;
+
+
+		cout<<"Closest fit box :"<<endl;
+		cout<<"Point i j :"<<endl;
+		ThermoTables[iIndex][jIndex].CTLprint();
+		cout<<"Point i+1 j :"<<endl;
+		ThermoTables[iIndex+1][jIndex].CTLprint();
+		cout<<"Point i j+1 :"<<endl;
+		ThermoTables[iIndex][jIndex+1].CTLprint();
+		cout<<"Point i+1 j+1 :"<<endl;
+		ThermoTables[iIndex+1][jIndex+1].CTLprint();
+		//Now use the closest fit box to interpolate
+
+
+		su2double x, y;
+		x = rho - ThermoTables[iIndex][jIndex].Density;
+		y = T - ThermoTables[iIndex][jIndex].Temperature;
+		//Determine interpolation coefficients
+		Interp2D_ArbitrarySkewCoeff(x,y,"RHOT");
+		cout<<"Interpolation matrix inverse \n";
+		for (int j=0; j<3; j++)
+		{
+			cout<<setw(15)<<coeff[j][0]<<"   "<<coeff[j][1]<<"   "<<coeff[j][2]<<endl;
+		}
+		CThermoList interpolated;
+		interpolated.Temperature       = T;
+		interpolated.Density           = rho ;
+		interpolated.StaticEnergy      = Interp2D_lin(x, y, "StaticEnergy" );
+		interpolated.Entropy           = Interp2D_lin(x, y, "Entropy" );
+		interpolated.Pressure          = Interp2D_lin(x, y, "Pressure" );
+		interpolated.SoundSpeed2       = Interp2D_lin(x, y, "SoundSpeed2" );
+		interpolated.dPdrho_e          = Interp2D_lin(x, y, "dPdrho_e" );
+		interpolated.dPde_rho          = Interp2D_lin(x, y, "dPde_rho" );
+		interpolated.dTdrho_e          = Interp2D_lin(x, y, "dTdrho_e" );
+		interpolated.dTde_rho          = Interp2D_lin(x, y, "dTde_rho" );
+		interpolated.Cp                = Interp2D_lin(x, y, "Cp" );
+		interpolated.Mu                = Interp2D_lin(x, y, "Mu" );
+		interpolated.dmudrho_T         = Interp2D_lin(x, y, "dmudrho_T" );
+		interpolated.dmudT_rho         = Interp2D_lin(x, y, "dmudT_rho" );
+		interpolated.Kt                = Interp2D_lin(x, y, "Kt" );
+		interpolated.dktdrho_T         = Interp2D_lin(x, y, "dktdrho_T" );
+		interpolated.dktdT_rho         = Interp2D_lin(x, y, "dktdT_rho" );
+		//Intermediate variables only needed for StandAlone version
+		su2double Density = interpolated.Density;
+		su2double Pressure = interpolated.Pressure;
+		cout<<"Interpolated fit:"<<endl;
+		interpolated.CTLprint ();
+		if ((Density>Density_limits[1]) or (Density<Density_limits[0]))
+		{
+			throw runtime_error("RHOT Interpolated Density out of bounds");
+		}
+		if ((Pressure>Pressure_limits[1]) or (Pressure<Pressure_limits[0]))
+		{
+			throw runtime_error("RHOT Interpolated Pressure out of bounds");
+		}
+	}
+	catch (exception& e)
+	{
+		cerr<<"\n"<< e.what() << "\n";
+	}
 
 
 }
@@ -641,14 +884,14 @@ void CLookUpTable::Interp2D_ArbitrarySkewCoeff(su2double x, su2double y, std::st
 	}
 	else if(grid_var=="PS")
 	{
-		x00  = ThermoTables[iIndex  ][jIndex  ].Pressure;
-		y00  = ThermoTables[iIndex  ][jIndex  ].Entropy ;
-		dx01 = ThermoTables[iIndex  ][jIndex+1].Pressure -x00;
-		dy01 = ThermoTables[iIndex  ][jIndex+1].Entropy  -y00;
-		dx10 = ThermoTables[iIndex+1][jIndex  ].Pressure -x00;
-		dy10 = ThermoTables[iIndex+1][jIndex  ].Entropy  -y00;
-		dx11 = ThermoTables[iIndex+1][jIndex+1].Pressure -x00;
-		dy11 = ThermoTables[iIndex+1][jIndex+1].Entropy  -y00;
+		y00  = ThermoTables[iIndex  ][jIndex  ].Pressure;
+		x00  = ThermoTables[iIndex  ][jIndex  ].Entropy ;
+		dy01 = ThermoTables[iIndex  ][jIndex+1].Pressure -y00;
+		dx01 = ThermoTables[iIndex  ][jIndex+1].Entropy  -x00;
+		dy10 = ThermoTables[iIndex+1][jIndex  ].Pressure -y00;
+		dx10 = ThermoTables[iIndex+1][jIndex  ].Entropy  -x00;
+		dy11 = ThermoTables[iIndex+1][jIndex+1].Pressure -y00;
+		dx11 = ThermoTables[iIndex+1][jIndex+1].Entropy  -x00;
 	}
 	else if(grid_var=="HS")
 	{
