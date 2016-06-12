@@ -306,7 +306,7 @@ void CLookUpTable::SetTDState_rhoe (su2double rho, su2double e ) {
 			throw runtime_error("RHOE Incorrect interpolation quad selected (point outside of quad)");
 		}
 		//Determine interpolation coefficients
-		Interp2D_ArbitrarySkewCoeff("RHOE");
+		Interp2D_ArbitrarySkewCoeff(x,y,"RHOE");
 		cout<<"Interpolation matrix inverse \n";
 		for (int j=0; j<3; j++)
 		{
@@ -382,10 +382,13 @@ void CLookUpTable::SetTDState_rhoT (su2double rho, su2double T ) {
 }
 
 
-void CLookUpTable::Interp2D_ArbitrarySkewCoeff(std::string grid_var)
+void CLookUpTable::Interp2D_ArbitrarySkewCoeff(su2double x, su2double y, std::string grid_var)
 {
 	//Distances in along x and y axis are taken relative to i,j point (x00, y00).
 	//This reduces the interpolation to a 3by3 system rather than 4by4
+	//x and y are not strictrly necessary for the calculation of the coefficients.
+	//However, they do allow for checking whether the point of interest is contained in
+	//the quad under consideration.
 	su2double x00, y00, dx10, dx01, dx11, dy10, dy01, dy11;
 	//Interpolation LHM
 	su2double A[3][3];
@@ -458,6 +461,31 @@ void CLookUpTable::Interp2D_ArbitrarySkewCoeff(std::string grid_var)
 		dx11 = ThermoTables[iIndex+1][jIndex+1].StaticEnergy -x00;
 		dy11 = ThermoTables[iIndex+1][jIndex+1].Entropy      -y00;
 	}
+	//Check if x, y is indeed in the quad
+	//Check BOTTOM quad boundary
+	if((y*dx10)<(x*dy10))
+	{
+		throw runtime_error(grid_var+" interpolation point lies below bottom boundary of selected quad");
+	}
+	//Check RIGHT quad boundary
+	if(((x-dx10)*(dy11-dy10))>((dx11-dx10)*(y-dy10)))
+	{
+		throw runtime_error(grid_var+" interpolation point lies to the right of the boundary of selected quad");
+	}
+	//Check TOP quad boundary
+	if(((y-dy01)*(dx11-dx01))>((dy11-dy01)*(x-dx01)))
+	{
+
+		throw runtime_error(grid_var+" interpolation point lies above the boundary of selected quad");
+	}
+	//Check LEFT quad boundary
+	if((x*dy01)<(dx01*y))
+	{
+		throw runtime_error(grid_var+" interpolation point lies to the left of the boundary of selected quad");
+	}
+
+
+
 	//Setup the LHM matrix for the interpolation
 	A[0][0] = dx10;
 	A[0][1] = dy10;

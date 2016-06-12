@@ -149,7 +149,7 @@ public:
 
 	void SetTDState_Ps (su2double P, su2double s );
 	void Interp2D_SingleSkewCoeff(std::string grid_var);
-	void Interp2D_ArbitrarySkewCoeff(std::string grid_var);
+	void Interp2D_ArbitrarySkewCoeff(su2double x, su2double y, std::string grid_var);
 	su2double Interp2D_lin(su2double x, su2double y, std::string interpolant_var);
 	void TableLoadCFX(char* filename);
 	void LUTprint(void);
