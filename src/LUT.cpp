@@ -14,6 +14,7 @@ CThermoList::CThermoList(){
 
 	StaticEnergy = 0.0; //yes
 	Entropy      = 0.0; //yes
+	Enthalpy     = 0.0; //yes
 	Density      = 0.0; //yes
 	Pressure     = 0.0; //yes
 	SoundSpeed2  = 0.0; //yes
@@ -34,7 +35,7 @@ CThermoList::CThermoList(){
 void CThermoList::CTLprint()
 {
 	cout<<"StaticEnergy:"<<StaticEnergy<<endl;
-	cout<<"Entropy     :"<<Entropy<<endl;
+	cout<<"Enthalpy    :"<<Enthalpy<<endl;
 	cout<<"Density     :"<<Density<<endl;
 	cout<<"Pressure    :"<<Pressure<<endl;
 	cout<<"SoundSpeed2 :"<<SoundSpeed2<<endl;
@@ -103,42 +104,37 @@ CLookUpTable::~CLookUpTable(void) {
 
 }
 void CLookUpTable::SearchKD_Tree (su2double thermo1, su2double thermo2,  string thermoPair){
-
-	su2double RunVal;
-	unsigned int LowerI = 0;
-	unsigned int UpperI = ceil(rho_dim/2);
-	unsigned int LowerJ = 0;
-	unsigned int UpperJ = ceil(p_dim/2);
+	//KDtree for monotonic functions. The tree only explores the best branch.
+	su2double RunVal, grad;
+	int LowerI = 0;
+	int UpperI = ceil(rho_dim/2);
+	int LowerJ = 0;
+	int UpperJ = ceil(p_dim/2);
 	unsigned int leafsize = rho_dim*p_dim;
 	unsigned int depth = 0;
-	cout<<"Here"<<endl;
 	while (leafsize>2)
 	{
 		leafsize = (UpperI-LowerI)*(UpperJ-LowerJ);
 		depth++;
 		cout<<RunVal<<endl;
 
-		if (thermoPair == "RHOE")
+		if (thermoPair == "HS")
 		{
-			cout<<"Here"<<endl;
 			if ((depth%2)==0 and ((UpperI-LowerI)>1))
 			{
-				RunVal = ThermoTables[UpperI][UpperJ].Density;
+				RunVal = ThermoTables[UpperI][UpperJ].Enthalpy;
+				//No need to sort values since they are monotonic
+				//just need to know which way they are increasing
+
 
 			}
 			else if ((depth%2)!=0 and ((UpperJ-LowerJ)>1))
 			{
-				RunVal = ThermoTables[UpperI][UpperJ].StaticEnergy;
+				RunVal = ThermoTables[UpperI][UpperJ].Entropy;
 
 			}
 		}
-		else if (thermoPair=="PT") cout<<endl;
 
-
-		else if (thermoPair=="PRHO")cout<<endl;
-		cout<<"I "<<LowerI<<" "<<UpperI<<endl;
-		cout<<"J "<<LowerJ<<" "<<UpperJ<<endl;
-		cout<<"Here---"<<RunVal<<endl;
 		if ((depth%2)==0 and ((UpperI-LowerI)>1))
 		{
 			if (RunVal>thermo1)
@@ -152,49 +148,34 @@ void CLookUpTable::SearchKD_Tree (su2double thermo1, su2double thermo2,  string 
 			}
 
 		}
-		else if ((depth%2)!=0 and ((UpperJ-LowerJ)>1))
-		{
-			if (RunVal>thermo2)
-			{
-				UpperJ = LowerJ + ceil((UpperJ-LowerJ)/2);
-			}
-			else if (RunVal<thermo2)
-			{
-				LowerJ = UpperJ;
-				UpperJ = p_dim;
-
-			}
-
-		}
-
 		cout<<"I "<<LowerI<<" "<<UpperI<<endl;
 		cout<<"J "<<LowerJ<<" "<<UpperJ<<endl;
-
 	}
 
 
 	//If lower than leafsize, transition to brute force
 	int xmax, ymax;
-	su2double D_rho, g_rho;
-	su2double D_e, g_e;
-	su2double e = thermo2;
-	su2double rho = thermo1;
-	D_rho = ThermoTables[LowerI][LowerJ].Density-rho;
-	D_e = ThermoTables[LowerI][LowerJ].StaticEnergy-e;
-
-	cout<<"Here4"<<endl;
-	for (int j=0; j<(UpperJ-LowerJ); j++)
+	su2double g_y, g_x;
+	su2double D_x, D_y;
+	cout<<"here";
+	if (thermoPair =="HS")
 	{
-		for (int i=0; i<(UpperI-LowerI); i++)
+		D_x = ThermoTables[LowerI][LowerJ].Enthalpy-thermo1;
+		D_y = ThermoTables[LowerI][LowerJ].Entropy-thermo2;
+
+		for (int j=0; j<(UpperJ-LowerJ); j++)
 		{
-			g_rho = (ThermoTables[i][j].Density-rho);
-			g_e = (ThermoTables[i][j].StaticEnergy-e);
-			if ((pow(g_rho/rho,2)+pow(g_e/e,2))<(pow(D_rho/rho,2)+pow(D_e/e,2)))
+			for (int i=0; i<(UpperI-LowerI); i++)
 			{
-				xmax = i;
-				D_rho = g_rho;
-				ymax = j;
-				D_e   = g_e;
+				g_x = (ThermoTables[i][j].Density-thermo2);
+				g_y = (ThermoTables[i][j].StaticEnergy-thermo2);
+				if ((pow(g_x/thermo1,2)+pow(g_y/thermo2,2))<(pow(D_x/thermo1,2)+pow(D_y/thermo2,2)))
+				{
+					xmax = i;
+					D_x = g_x;
+					ymax = j;
+					D_y   = g_y;
+				}
 			}
 		}
 	}
@@ -204,8 +185,8 @@ void CLookUpTable::SearchKD_Tree (su2double thermo1, su2double thermo2,  string 
 	if(xmax==(0)) xmax++;
 
 	//Detect if point is not bottom corner of simplex
-	if(D_e<0) ymax++;
-	if(D_rho<0) xmax++;
+	if(D_y<0) ymax++;
+	if(D_x<0) xmax++;
 	cout<<"KD search found"<<endl;
 	cout<<xmax<<endl;
 	cout<<ymax<<endl;
@@ -318,6 +299,7 @@ void CLookUpTable::SetTDState_rhoe (su2double rho, su2double e ) {
 		CThermoList interpolated;
 		interpolated.StaticEnergy      = e;
 		interpolated.Density           = rho ;
+		interpolated.Enthalpy          = Interp2D_lin(x, y, "Enthalpy" );
 		interpolated.Entropy           = Interp2D_lin(x, y, "Entropy" );
 		interpolated.Pressure          = Interp2D_lin(x, y, "Pressure" );
 		interpolated.SoundSpeed2       = Interp2D_lin(x, y, "SoundSpeed2" );
@@ -440,6 +422,7 @@ void CLookUpTable::SetTDState_PT (su2double P, su2double T ) {
 		CThermoList interpolated;
 		interpolated.Temperature       = T;
 		interpolated.Pressure          = P ;
+		interpolated.Enthalpy          = Interp2D_lin(x, y, "Enthalpy" );
 		interpolated.StaticEnergy      = Interp2D_lin(x, y, "StaticEnergy" );
 		interpolated.Entropy           = Interp2D_lin(x, y, "Entropy" );
 		interpolated.Density           = Interp2D_lin(x, y, "Density" );
@@ -533,7 +516,8 @@ void CLookUpTable::SetTDState_Prho (su2double P, su2double rho ) {
 		}
 		CThermoList interpolated;
 		interpolated.Pressure           = P;
-		interpolated.Density          = rho ;
+		interpolated.Density           = rho ;
+		interpolated.Enthalpy          = Interp2D_lin(x, y, "Enthalpy" );
 		interpolated.StaticEnergy      = Interp2D_lin(x, y, "StaticEnergy" );
 		interpolated.Entropy           = Interp2D_lin(x, y, "Entropy" );
 		interpolated.SoundSpeed2       = Interp2D_lin(x, y, "SoundSpeed2" );
@@ -576,9 +560,82 @@ void CLookUpTable::SetEnergy_Prho (su2double P, su2double rho ) {
 }
 
 void CLookUpTable::SetTDState_hs (su2double h, su2double s ) {
+	try
+	{
+		//Check if inputs are in total range (necessary but not sufficient condition)
+		if ((h>Enthalpy_limits[1]) or (h<Enthalpy_limits[0]))
+		{
+			throw runtime_error("HS Input Enthalpy out of bounds");
+		}
+		if ((s>Entropy_limits[1]) or (s<Entropy_limits[0]))
+		{
+			throw runtime_error("HS Input Entropy out of bounds");
+		}
+		cout<<endl<<"h desired : "<<h<<endl;
+		cout<<"s desired   : "<<s<<endl;
 
+		SearchKD_Tree (h, s, "HS");
+
+		cout<<"Closest fit box :"<<endl;
+		cout<<"Point i j :"<<endl;
+		ThermoTables[iIndex][jIndex].CTLprint();
+		cout<<"Point i+1 j :"<<endl;
+		ThermoTables[iIndex+1][jIndex].CTLprint();
+		cout<<"Point i j+1 :"<<endl;
+		ThermoTables[iIndex][jIndex+1].CTLprint();
+		cout<<"Point i+1 j+1 :"<<endl;
+		ThermoTables[iIndex+1][jIndex+1].CTLprint();
+		//Now use the closest fit box to interpolate
+
+
+		su2double x, y;
+		x = h - ThermoTables[iIndex][jIndex].Enthalpy;
+		y = s - ThermoTables[iIndex][jIndex].Entropy;
+		//Determine interpolation coefficients
+		Interp2D_ArbitrarySkewCoeff(x,y,"HS");
+		cout<<"Interpolation matrix inverse \n";
+		for (int j=0; j<3; j++)
+		{
+			cout<<setw(15)<<coeff[j][0]<<"   "<<coeff[j][1]<<"   "<<coeff[j][2]<<endl;
+		}
+		CThermoList interpolated;
+		interpolated.Entropy           = s;
+		interpolated.Enthalpy          = h;
+		interpolated.StaticEnergy      = Interp2D_lin(x, y, "StaticEnergy" );
+		interpolated.Density           = Interp2D_lin(x, y, "Density" );
+		interpolated.Pressure          = Interp2D_lin(x, y, "Pressure" );
+		interpolated.SoundSpeed2       = Interp2D_lin(x, y, "SoundSpeed2" );
+		interpolated.Temperature       = Interp2D_lin(x, y, "Temperature" );
+		interpolated.dPdrho_e          = Interp2D_lin(x, y, "dPdrho_e" );
+		interpolated.dPde_rho          = Interp2D_lin(x, y, "dPde_rho" );
+		interpolated.dTdrho_e          = Interp2D_lin(x, y, "dTdrho_e" );
+		interpolated.dTde_rho          = Interp2D_lin(x, y, "dTde_rho" );
+		interpolated.Cp                = Interp2D_lin(x, y, "Cp" );
+		interpolated.Mu                = Interp2D_lin(x, y, "Mu" );
+		interpolated.dmudrho_T         = Interp2D_lin(x, y, "dmudrho_T" );
+		interpolated.dmudT_rho         = Interp2D_lin(x, y, "dmudT_rho" );
+		interpolated.Kt                = Interp2D_lin(x, y, "Kt" );
+		interpolated.dktdrho_T         = Interp2D_lin(x, y, "dktdrho_T" );
+		interpolated.dktdT_rho         = Interp2D_lin(x, y, "dktdT_rho" );
+		//Intermediate variables only needed for StandAlone version
+		su2double Density = interpolated.Density;
+		su2double Pressure = interpolated.Pressure;
+		cout<<"Interpolated fit:"<<endl;
+		interpolated.CTLprint ();
+		if ((Density>Density_limits[1]) or (Density<Density_limits[0]))
+		{
+			throw runtime_error("HS Interpolated Density out of bounds");
+		}
+		if ((Pressure>Pressure_limits[1]) or (Pressure<Pressure_limits[0]))
+		{
+			throw runtime_error("HS Interpolated Pressure out of bounds");
+		}
+	}
+	catch (exception& e)
+	{
+		cerr<<"\n"<< e.what() << "\n";
+	}
 }
-
 void CLookUpTable::SetTDState_Ps (su2double P, su2double s )
 {
 	try
@@ -666,6 +723,7 @@ void CLookUpTable::SetTDState_Ps (su2double P, su2double s )
 		CThermoList interpolated;
 		interpolated.Entropy           = s;
 		interpolated.Pressure          = P ;
+		interpolated.Enthalpy          = Interp2D_lin(x, y, "Enthalpy" );
 		interpolated.StaticEnergy      = Interp2D_lin(x, y, "StaticEnergy" );
 		interpolated.Density           = Interp2D_lin(x, y, "Density" );
 		interpolated.SoundSpeed2       = Interp2D_lin(x, y, "SoundSpeed2" );
@@ -787,6 +845,7 @@ void CLookUpTable::SetTDState_rhoT (su2double rho, su2double T ) {
 		CThermoList interpolated;
 		interpolated.Temperature       = T;
 		interpolated.Density           = rho ;
+		interpolated.Enthalpy          = Interp2D_lin(x, y, "Enthalpy" );
 		interpolated.StaticEnergy      = Interp2D_lin(x, y, "StaticEnergy" );
 		interpolated.Entropy           = Interp2D_lin(x, y, "Entropy" );
 		interpolated.Pressure          = Interp2D_lin(x, y, "Pressure" );
@@ -895,13 +954,13 @@ void CLookUpTable::Interp2D_ArbitrarySkewCoeff(su2double x, su2double y, std::st
 	}
 	else if(grid_var=="HS")
 	{
-		x00  = ThermoTables[iIndex  ][jIndex  ].StaticEnergy;
+		x00  = ThermoTables[iIndex  ][jIndex  ].Enthalpy;
 		y00  = ThermoTables[iIndex  ][jIndex  ].Entropy     ;
-		dx01 = ThermoTables[iIndex  ][jIndex+1].StaticEnergy -x00;
+		dx01 = ThermoTables[iIndex  ][jIndex+1].Enthalpy -x00;
 		dy01 = ThermoTables[iIndex  ][jIndex+1].Entropy      -y00;
-		dx10 = ThermoTables[iIndex+1][jIndex  ].StaticEnergy -x00;
+		dx10 = ThermoTables[iIndex+1][jIndex  ].Enthalpy -x00;
 		dy10 = ThermoTables[iIndex+1][jIndex  ].Entropy      -y00;
-		dx11 = ThermoTables[iIndex+1][jIndex+1].StaticEnergy -x00;
+		dx11 = ThermoTables[iIndex+1][jIndex+1].Enthalpy -x00;
 		dy11 = ThermoTables[iIndex+1][jIndex+1].Entropy      -y00;
 	}
 	//Check if x, y is indeed in the quad
@@ -1167,6 +1226,13 @@ su2double CLookUpTable::Interp2D_lin(su2double x, su2double y, string interpolan
 		f01 = ThermoTables[iIndex  ][jIndex+1].dktdT_rho;
 		f11 = ThermoTables[iIndex+1][jIndex+1].dktdT_rho;
 	}
+	else if(interpolant_var=="Enthalpy")
+	{
+		f00 = ThermoTables[iIndex  ][jIndex  ].Enthalpy;
+		f10 = ThermoTables[iIndex+1][jIndex  ].Enthalpy;
+		f01 = ThermoTables[iIndex  ][jIndex+1].Enthalpy;
+		f11 = ThermoTables[iIndex+1][jIndex+1].Enthalpy;
+	}
 
 	//Using offset relative to i,j point yields a 3by3 system rather than 4by4
 	F[0] = f10 - f00;
@@ -1366,6 +1432,44 @@ void CLookUpTable::TableLoadCFX(char* filename){
 
 					}
 					cout<<"Tables have been filled with Static Energy values "<<var<<endl;
+				}
+				if(var==1)
+				{
+					for (int k =0; k<ceil(float(set_x)/10.0);k++) getline(table,line); //skip density
+					for (int k =0; k<ceil(float(set_y)/10.0);k++) getline(table,line); //skip pressure
+
+					Enthalpy_limits[0] = 10E20;//lower limit
+					Enthalpy_limits[1] = 0;//upper limit
+
+					su2double inp[10];
+
+					for (int j =0; j<set_y; j++)
+					{
+						for(int i =0; i<set_x; i++)
+						{
+							if ((j*set_x+i)%10==0)
+							{
+								getline(table,line);
+								cout<<line<<endl;
+								istringstream in(line);
+								for (int z = 0; z<10; z++)
+								{
+									in>>inp[z];
+								}
+							}
+							ThermoTables[i][j].Enthalpy = inp[i];
+							if (inp[i]>Enthalpy_limits[1])
+							{
+								Enthalpy_limits[1]= inp[i];
+							}
+							if (inp[i]<Enthalpy_limits[0])
+							{
+								Enthalpy_limits[0]=inp[i];
+							}
+						}
+
+					}
+					cout<<"Tables have been filled with speed of specific enthalpy values "<<var<<endl;
 				}
 				if(var==2)
 				{

@@ -4,6 +4,7 @@ class CThermoList {
 public:
 	su2double StaticEnergy,			/*!< \brief Internal Energy. */
 	Entropy,  				/*!< \brief Entropy. */
+	Enthalpy,
 	Density,  				/*!< \brief Density. */
 	Pressure, 				/*!< \brief Pressure. */
 	SoundSpeed2, 		/*!< \brief SpeedSound. */
@@ -51,6 +52,7 @@ protected:
 
 	su2double StaticEnergy_limits[2];
 	su2double Entropy_limits[2];
+	su2double Enthalpy_limits[2];
 	su2double Density_limits[2];
 	su2double Pressure_limits[2];
 	su2double SoundSpeed2_limits[2];
