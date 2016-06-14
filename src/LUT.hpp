@@ -1,5 +1,14 @@
 #define su2double double
 #include <string>
+
+struct KD_node
+{
+	int depth,imin,jmin,imax,jmax;
+	su2double xval, yval, grad;
+	KD_node* higher;
+	KD_node* lower;
+};
+
 class CThermoList {
 public:
 	su2double StaticEnergy,			/*!< \brief Internal Energy. */
@@ -92,7 +101,9 @@ public:
 	 * \param[in] thermo2 - second thermodynamic variable
 	 * \param[in] input thermodynamic pair.
 	 */
-	void SearchKD_Tree (su2double thermo1, su2double thermo2,  std::string thermoPair);
+	struct KD_node* KD_Tree(int imin, int imax, int jmin, int jmax, int depth, std::string thermoPair);
+	su2double Dist_KD_Tree (su2double x, su2double y, KD_node *branch);
+	void NN_KD_Tree (su2double thermo1, su2double thermo2, KD_node *root, std::string thermoPair, su2double best_dist);
 	void SearchZigZag (su2double thermo1, su2double thermo2,  unsigned long thermoPair );
 	void SearchThermoPair (su2double thermo1, su2double thermo2,  unsigned long thermoPair );
 

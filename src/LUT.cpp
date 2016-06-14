@@ -10,6 +10,9 @@
 #include <iomanip>
 
 using namespace std;
+
+
+
 CThermoList::CThermoList(){
 
 	StaticEnergy = 0.0; //yes
@@ -36,6 +39,7 @@ void CThermoList::CTLprint()
 {
 	cout<<"StaticEnergy:"<<StaticEnergy<<endl;
 	cout<<"Enthalpy    :"<<Enthalpy<<endl;
+	cout<<"Entropy     :"<<Entropy<<endl;
 	cout<<"Density     :"<<Density<<endl;
 	cout<<"Pressure    :"<<Pressure<<endl;
 	cout<<"SoundSpeed2 :"<<SoundSpeed2<<endl;
@@ -103,94 +107,124 @@ CLookUpTable::CLookUpTable(char* Filename) {
 CLookUpTable::~CLookUpTable(void) {
 
 }
-void CLookUpTable::SearchKD_Tree (su2double thermo1, su2double thermo2,  string thermoPair){
-	//KDtree for monotonic functions. The tree only explores the best branch.
-	su2double RunVal, grad;
-	int LowerI = 0;
-	int UpperI = ceil(rho_dim/2);
-	int LowerJ = 0;
-	int UpperJ = ceil(p_dim/2);
-	unsigned int leafsize = rho_dim*p_dim;
-	unsigned int depth = 0;
-	while (leafsize>2)
+struct KD_node* CLookUpTable::KD_Tree(int imin, int imax, int jmin, int jmax, int depth, string thermoPair)
+{
+	struct KD_node *kdn = new KD_node;
+
+	int  imed; //pivot point in i axes
+	int  jmed; //pivot point in j axes
+	jmed = jmin;
+	imed = imin;
+
+	if (depth%2 ==0)
 	{
-		leafsize = (UpperI-LowerI)*(UpperJ-LowerJ);
-		depth++;
-		cout<<RunVal<<endl;
-
-		if (thermoPair == "HS")
+		if ((imax-imin)>1)
 		{
-			if ((depth%2)==0 and ((UpperI-LowerI)>1))
-			{
-				RunVal = ThermoTables[UpperI][UpperJ].Enthalpy;
-				//No need to sort values since they are monotonic
-				//just need to know which way they are increasing
-
-
-			}
-			else if ((depth%2)!=0 and ((UpperJ-LowerJ)>1))
-			{
-				RunVal = ThermoTables[UpperI][UpperJ].Entropy;
-
-			}
-		}
-
-		if ((depth%2)==0 and ((UpperI-LowerI)>1))
-		{
-			if (RunVal>thermo1)
-			{
-				UpperI = LowerI + ceil((UpperI-LowerI)/2);
-			}
-			else if (RunVal<thermo1)
-			{
-				LowerI = UpperI;
-				UpperI = rho_dim;
-			}
-
-		}
-		cout<<"I "<<LowerI<<" "<<UpperI<<endl;
-		cout<<"J "<<LowerJ<<" "<<UpperJ<<endl;
-	}
-
-
-	//If lower than leafsize, transition to brute force
-	int xmax, ymax;
-	su2double g_y, g_x;
-	su2double D_x, D_y;
-	cout<<"here";
-	if (thermoPair =="HS")
-	{
-		D_x = ThermoTables[LowerI][LowerJ].Enthalpy-thermo1;
-		D_y = ThermoTables[LowerI][LowerJ].Entropy-thermo2;
-
-		for (int j=0; j<(UpperJ-LowerJ); j++)
-		{
-			for (int i=0; i<(UpperI-LowerI); i++)
-			{
-				g_x = (ThermoTables[i][j].Density-thermo2);
-				g_y = (ThermoTables[i][j].StaticEnergy-thermo2);
-				if ((pow(g_x/thermo1,2)+pow(g_y/thermo2,2))<(pow(D_x/thermo1,2)+pow(D_y/thermo2,2)))
-				{
-					xmax = i;
-					D_x = g_x;
-					ymax = j;
-					D_y   = g_y;
-				}
-			}
+			imed = imin + floor(float(imax-imin)/2.0);
 		}
 	}
 
-	//Detect if it is in on a boundary:
-	if(ymax==(0)) ymax++;
-	if(xmax==(0)) xmax++;
+	else if (depth%2 ==1)
+	{
+		if ((jmax-jmin)>1)
+		{
+			jmed = jmin + floor(float(jmax - jmin)/2.0);
+		}
+	}
 
-	//Detect if point is not bottom corner of simplex
-	if(D_y<0) ymax++;
-	if(D_x<0) xmax++;
-	cout<<"KD search found"<<endl;
-	cout<<xmax<<endl;
-	cout<<ymax<<endl;
+	if (thermoPair == "HS")
+	{
+		kdn->xval = ThermoTables[imed][jmed].Enthalpy;
+		kdn->yval = ThermoTables[imed][jmed].Entropy;
+		if (depth%2 ==0) kdn->grad= ThermoTables[imed+1][jmed].Enthalpy-kdn->xval;
+		if (depth%2 ==1) kdn->grad= ThermoTables[imed][jmed+1].Entropy-kdn->yval;
+	}
 
+	kdn->imin = imed;
+	kdn->imax = imax;
+	kdn->jmin = jmed;
+	kdn->jmax = jmax;
+	kdn->depth= depth;
+
+	if(((imax-imed)> 1) or ((jmax-jmed) > 1))
+	{
+		if (depth%2 ==0)
+		{
+
+			if (kdn->grad<=0)
+			{
+				kdn->higher= KD_Tree(imin, imed, jmin, jmax, depth+1, thermoPair);
+				kdn->lower = KD_Tree(imed, imax, jmin, jmax, depth+1, thermoPair);
+
+			}
+			else if (kdn->grad>0)
+			{
+				kdn->lower = KD_Tree(imin, imed, jmin, jmax, depth+1, thermoPair);
+				kdn->higher= KD_Tree(imed, imax, jmin, jmax, depth+1, thermoPair);
+			}
+
+		}
+		else if (depth%2 ==1)
+		{
+
+			if (kdn->grad<=0)
+			{
+				kdn->higher= KD_Tree(imin, imax, jmin, jmed, depth+1, thermoPair);
+				kdn->lower =  KD_Tree(imin, imax, jmed, jmax, depth+1, thermoPair);
+			}
+			if (kdn->grad>0)
+			{
+				kdn->lower =  KD_Tree(imin, imax, jmin, jmed, depth+1, thermoPair);
+				kdn->higher= KD_Tree(imin, imax, jmed, jmin, depth+1, thermoPair);
+			}
+		}
+
+	}
+	return kdn;
+}
+su2double CLookUpTable::Dist_KD_Tree (su2double x, su2double y, KD_node *branch)
+{
+	su2double dist;
+	dist = pow(pow((branch->xval-x)/x,2) + pow((branch->yval-y)/y,2),0.5);
+	return dist;
+}
+
+void CLookUpTable::NN_KD_Tree (su2double thermo1, su2double thermo2, KD_node *root,  string thermoPair, su2double best_dist)
+{
+	//Recursive nearest neighbor search of the KD tree
+	su2double dist;
+	dist = Dist_KD_Tree(thermo1, thermo2, root);
+	if (dist<=best_dist)
+	{
+		best_dist = dist;
+		iIndex = root->imin;
+		jIndex = root->jmin;
+		if (root->depth%2==0)
+		{
+			if (root->xval<=thermo1)
+			{
+				NN_KD_Tree (thermo1, thermo2, root->higher,  thermoPair, best_dist);
+			}
+			else if (root->xval>thermo1)
+			{
+				NN_KD_Tree (thermo1, thermo2, root->lower,  thermoPair, best_dist);
+			}
+
+		}
+		else if (root->depth%2==1)
+		{
+			if (root->yval<=thermo2)
+			{
+				NN_KD_Tree (thermo1, thermo2, root->higher,  thermoPair, best_dist);
+			}
+			else if (root->yval>thermo2)
+			{
+				NN_KD_Tree (thermo1, thermo2, root->lower,  thermoPair, best_dist);
+			}
+
+		}
+
+	}
 }
 
 
@@ -574,7 +608,10 @@ void CLookUpTable::SetTDState_hs (su2double h, su2double s ) {
 		cout<<endl<<"h desired : "<<h<<endl;
 		cout<<"s desired   : "<<s<<endl;
 
-		SearchKD_Tree (h, s, "HS");
+		KD_node *HS_tree = KD_Tree(0, rho_dim-1, 0, p_dim-1, 0, "HS");
+		cout<<"HS_tree built"<<endl;
+		NN_KD_Tree(h,s,HS_tree,"HS", 2);
+		cout<<"HS_tree searched"<<endl;
 
 		cout<<"Closest fit box :"<<endl;
 		cout<<"Point i j :"<<endl;

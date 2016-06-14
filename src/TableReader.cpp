@@ -26,7 +26,7 @@ int main() {
 	//LUT2.SetTDState_PT(5420052, 260);
 	//LUT2.SetTDState_rhoT(90, 80);
 	//LUT2.SetTDState_Ps(5400000, 2200);
-	LUT2.SetTDState_hs(771000, 2400);
+	LUT2.SetTDState_hs(771000, 2500);
 
 	return 0;
 	}
