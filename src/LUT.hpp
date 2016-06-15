@@ -3,9 +3,9 @@
 
 struct KD_node
 {
-	int depth,imin,jmin,imax,jmax;
-	su2double xval, yval, grad;
-	KD_node* higher;
+	int depth, dim, *i_values;
+	su2double * x_values, * y_values;
+	KD_node* upper;
 	KD_node* lower;
 };
 
@@ -58,6 +58,7 @@ protected:
 	/*!< \brief Fluid derivative DktDT_rho. */
 	long iIndex, jIndex;
 	int p_dim, rho_dim; /*!< \brief The pressure and density dimensions of the table */
+	KD_node *HS_tree; //KD tree for HS thermoPair
 
 	su2double StaticEnergy_limits[2];
 	su2double Entropy_limits[2];
@@ -101,9 +102,10 @@ public:
 	 * \param[in] thermo2 - second thermodynamic variable
 	 * \param[in] input thermodynamic pair.
 	 */
-	struct KD_node* KD_Tree(int imin, int imax, int jmin, int jmax, int depth, std::string thermoPair);
+	struct KD_node* KD_Tree(su2double* x_values, su2double* y_values, int* i_values, int dim, int depth);
 	su2double Dist_KD_Tree (su2double x, su2double y, KD_node *branch);
-	void NN_KD_Tree (su2double thermo1, su2double thermo2, KD_node *root, std::string thermoPair, su2double best_dist);
+	void free_KD_tree(KD_node* root);
+	void NN_KD_Tree (su2double thermo1, su2double thermo2, KD_node *root, su2double best_dist);
 	void SearchZigZag (su2double thermo1, su2double thermo2,  unsigned long thermoPair );
 	void SearchThermoPair (su2double thermo1, su2double thermo2,  unsigned long thermoPair );
 

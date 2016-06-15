@@ -2,8 +2,10 @@
 #include <fstream>
 #include <sstream>
 #include <string>
+#include <cstring>
 #include <cmath>
 #include <cassert>
+#include <algorithm>
 #include "stdlib.h"
 #include "stdio.h"
 #include "LUT.hpp"
@@ -88,13 +90,39 @@ CLookUpTable::CLookUpTable(char* Filename) {
 		{
 			for (int j=0; j<3; j++)
 			{
-				coeff[i][j] = 0;
+				coeff[i][j] = -1;
 			}
 		}
 		iIndex = -1;//negative number means it hasn't been preset yet
 		jIndex = -1;//same
+		cout<<"Here0 "<<ThermoTables[0][20].Entropy<<endl;
 		cout<<"p_dim  : "<<p_dim<<endl;
 		cout<<"rho_dim: "<<rho_dim<<endl;
+		cout<<"Build HS_tree"<<endl;
+		su2double* xtemp = new su2double[rho_dim*p_dim];//(su2double*) malloc(sizeof(su2double)*(rho_dim*p_dim));
+		su2double* ytemp = new su2double[rho_dim*p_dim];//(su2double*) malloc(sizeof(su2double)*(rho_dim*p_dim));
+		int* itemp 		 = new int[rho_dim*p_dim];//(int*) malloc(sizeof(int)*(rho_dim*p_dim));
+		for (int i=0; i<rho_dim; i++)
+		{
+			for (int j=0; j<p_dim; j++)
+			{
+
+				//memcpy(&xtemp[p_dim*i+j], &ThermoTables[i][j].Enthalpy, sizeof(su2double));
+				xtemp[p_dim*i+j] =ThermoTables[i][j].Enthalpy;
+				//cout<<ThermoTables[i][j].Enthalpy<<endl;
+				//cout<<ThermoTables[i][j].Entropy<<endl;
+				//cout<<"Here1 i,j: "<<i<<" , "<<j<<" , "<<p_dim*i+j<<endl;
+				ytemp[p_dim*i+j] = ThermoTables[i][j].Entropy;
+				//cout<<"Here2 p_dim: "<<p_dim<<endl;
+				itemp[p_dim*i+j] = p_dim*i+j;
+				//cout<<"Here2 rho_dim: "<<rho_dim<<endl;
+				cout<<itemp[p_dim*i+j]<<" "<<xtemp[p_dim*i+j]<<" "<<ytemp[p_dim*i+j]<<endl;
+			}
+			cout<<"\n "<<endl;
+		}
+
+		HS_tree = KD_Tree(xtemp, ytemp,itemp, p_dim*rho_dim, 0);
+		cout<<"HS_tree built"<<endl;
 	}
 	catch (exception& e)
 	{
@@ -105,125 +133,171 @@ CLookUpTable::CLookUpTable(char* Filename) {
 
 
 CLookUpTable::~CLookUpTable(void) {
+	delete(ThermoTables);
+	free_KD_tree(HS_tree);
+
 
 }
-struct KD_node* CLookUpTable::KD_Tree(int imin, int imax, int jmin, int jmax, int depth, string thermoPair)
+void CLookUpTable::free_KD_tree(KD_node* root)
 {
-	struct KD_node *kdn = new KD_node;
-
-	int  imed; //pivot point in i axes
-	int  jmed; //pivot point in j axes
-	jmed = jmin;
-	imed = imin;
-
-	if (depth%2 ==0)
+	if (root->dim>1)
 	{
-		if ((imax-imin)>1)
-		{
-			imed = imin + floor(float(imax-imin)/2.0);
-		}
+		free_KD_tree(root->upper);
+		free_KD_tree(root->lower);
 	}
+	delete(root->x_values);
+	delete(root->y_values);
+	delete(root->i_values);
+	delete(root);
+}
 
-	else if (depth%2 ==1)
+struct KD_node* CLookUpTable::KD_Tree(su2double* x_values, su2double* y_values, int* i_values, int dim, int depth)
+{
+
+	struct KD_node *kdn = new KD_node;//(KD_node*) malloc(sizeof(KD_node));;
+	kdn->x_values = x_values;
+	kdn->y_values = y_values;
+	kdn->i_values = i_values;
+	kdn->depth    = depth;
+	kdn->dim      = dim;
+	if(dim>1)
 	{
-		if ((jmax-jmin)>1)
-		{
-			jmed = jmin + floor(float(jmax - jmin)/2.0);
-		}
-	}
+		su2double temp;
+		int itemp;
+		int swaps = 0; //for bubblesort
+		bool sorted = false;
 
-	if (thermoPair == "HS")
-	{
-		kdn->xval = ThermoTables[imed][jmed].Enthalpy;
-		kdn->yval = ThermoTables[imed][jmed].Entropy;
-		if (depth%2 ==0) kdn->grad= ThermoTables[imed+1][jmed].Enthalpy-kdn->xval;
-		if (depth%2 ==1) kdn->grad= ThermoTables[imed][jmed+1].Entropy-kdn->yval;
-	}
 
-	kdn->imin = imed;
-	kdn->imax = imax;
-	kdn->jmin = jmed;
-	kdn->jmax = jmax;
-	kdn->depth= depth;
-
-	if(((imax-imed)> 1) or ((jmax-jmed) > 1))
-	{
 		if (depth%2 ==0)
 		{
-
-			if (kdn->grad<=0)
+			//bubble sort by xvalues
+			while (not sorted)
 			{
-				kdn->higher= KD_Tree(imin, imed, jmin, jmax, depth+1, thermoPair);
-				kdn->lower = KD_Tree(imed, imax, jmin, jmax, depth+1, thermoPair);
+				swaps = 0;
 
-			}
-			else if (kdn->grad>0)
-			{
-				kdn->lower = KD_Tree(imin, imed, jmin, jmax, depth+1, thermoPair);
-				kdn->higher= KD_Tree(imed, imax, jmin, jmax, depth+1, thermoPair);
-			}
+				for (int i=0; i<dim-1; i++)
+				{
+					if (x_values[i]>x_values[i+1])
+					{
+						temp   = x_values[i];
+						x_values[i] = x_values[i+1];
+						x_values[i+1] = temp;
 
+						temp   = y_values[i];
+						y_values[i] = y_values[i+1];
+						y_values[i+1] = temp;
+
+						itemp   = i_values[i];
+						i_values[i] = i_values[i+1];
+						i_values[i+1] = itemp;
+						//keep a record of the number of swaps performed
+						swaps++;
+					}
+				}
+				if (swaps==0) sorted = true;
+			}
 		}
 		else if (depth%2 ==1)
 		{
+			//bubble sort by yvalues
+			while (not sorted)
+			{
+				swaps = 0;
 
-			if (kdn->grad<=0)
-			{
-				kdn->higher= KD_Tree(imin, imax, jmin, jmed, depth+1, thermoPair);
-				kdn->lower =  KD_Tree(imin, imax, jmed, jmax, depth+1, thermoPair);
-			}
-			if (kdn->grad>0)
-			{
-				kdn->lower =  KD_Tree(imin, imax, jmin, jmed, depth+1, thermoPair);
-				kdn->higher= KD_Tree(imin, imax, jmed, jmin, depth+1, thermoPair);
+				for (int i=0; i<dim-1; i++)
+				{
+					if (y_values[i]>y_values[i+1])
+					{
+						temp   = y_values[i];
+						y_values[i] = y_values[i+1];
+						y_values[i+1] = temp;
+
+						temp   = x_values[i];
+						x_values[i] = x_values[i+1];
+						x_values[i+1] = temp;
+
+						itemp   = i_values[i];
+						i_values[i] = i_values[i+1];
+						i_values[i+1] = itemp;
+						//keep a record of the number of swaps performed
+						swaps++;
+					}
+				}
+				if (swaps==0) sorted = true;
 			}
 		}
+		cout<<"Here"<<endl;
+		//Create the new upper and lower arrays
+		su2double* upperx = new su2double[dim/2];
+		su2double* uppery = new su2double[dim/2];		//(su2double*) malloc(sizeof(su2double)*(dim/2));
+		int*  	   upperi = new int[dim/2];				//(int*) malloc(sizeof(su2double)*(dim/2));
+		su2double* lowerx = new su2double[dim-dim/2];	//(su2double*) malloc(sizeof(su2double)*(dim-dim/2));
+		su2double* lowery = new su2double[dim-dim/2];	//(su2double*) malloc(sizeof(su2double)*(dim-dim/2));
+		int*       loweri = new int[dim-dim/2];			//(int*) malloc(sizeof(int)*(dim-dim/2));
+		cout<<sizeof(su2double)<<endl;
+		cout<<dim/2<<endl;
+		cout<<dim-dim/2<<endl;
+		for (int i=0;i<dim/2;i++)
+		{
+			upperx[i] = x_values[i];
+			uppery[i] = y_values[i];
+			upperi[i] = i_values[i];
+			cout<<i<<endl;
+		}
+		for (int i=dim/2;i<(dim-dim/2);i++)
+		{
+			lowerx[i] = x_values[i];
+			lowery[i] = y_values[i];
+			loweri[i] = i_values[i];
+		}
 
+		kdn->upper = KD_Tree( upperx, uppery, upperi, dim/2, depth+1);
+		kdn->lower = KD_Tree( lowerx, lowery, loweri, dim-dim/2, depth+1);
 	}
+
 	return kdn;
 }
 su2double CLookUpTable::Dist_KD_Tree (su2double x, su2double y, KD_node *branch)
 {
 	su2double dist;
-	dist = pow(pow((branch->xval-x)/x,2) + pow((branch->yval-y)/y,2),0.5);
+	dist = pow(pow((branch->x_values[branch->dim/2]-x)/x,2)\
+			+ pow((branch->y_values[branch->dim/2]-y)/y,2),0.5);
 	return dist;
 }
 
-void CLookUpTable::NN_KD_Tree (su2double thermo1, su2double thermo2, KD_node *root,  string thermoPair, su2double best_dist)
+
+void CLookUpTable::NN_KD_Tree (su2double thermo1, su2double thermo2, KD_node *root, su2double best_dist)
 {
-	//Recursive nearest neighbor search of the KD tree
+	//Recursive nearest neighbor search of the KD tree, without unwinding
 	su2double dist;
 	dist = Dist_KD_Tree(thermo1, thermo2, root);
 	if (dist<=best_dist)
 	{
 		best_dist = dist;
-		iIndex = root->imin;
-		jIndex = root->jmin;
+		iIndex = root->i_values[0]%p_dim;
+		jIndex = root->i_values[0]/p_dim;
 		if (root->depth%2==0)
 		{
-			if (root->xval<=thermo1)
+			if (root->x_values[0]<=thermo1)
 			{
-				NN_KD_Tree (thermo1, thermo2, root->higher,  thermoPair, best_dist);
+				NN_KD_Tree (thermo1, thermo2, root->upper, best_dist);
 			}
-			else if (root->xval>thermo1)
+			else if (root->x_values[0]>thermo1)
 			{
-				NN_KD_Tree (thermo1, thermo2, root->lower,  thermoPair, best_dist);
+				NN_KD_Tree (thermo1, thermo2, root->lower, best_dist);
 			}
-
 		}
 		else if (root->depth%2==1)
 		{
-			if (root->yval<=thermo2)
+			if (root->x_values[0]<=thermo2)
 			{
-				NN_KD_Tree (thermo1, thermo2, root->higher,  thermoPair, best_dist);
+				NN_KD_Tree (thermo1, thermo2, root->upper, best_dist);
 			}
-			else if (root->yval>thermo2)
+			else if (root->x_values[0]>thermo2)
 			{
-				NN_KD_Tree (thermo1, thermo2, root->lower,  thermoPair, best_dist);
+				NN_KD_Tree (thermo1, thermo2, root->lower, best_dist);
 			}
-
 		}
-
 	}
 }
 
@@ -608,10 +682,10 @@ void CLookUpTable::SetTDState_hs (su2double h, su2double s ) {
 		cout<<endl<<"h desired : "<<h<<endl;
 		cout<<"s desired   : "<<s<<endl;
 
-		KD_node *HS_tree = KD_Tree(0, rho_dim-1, 0, p_dim-1, 0, "HS");
-		cout<<"HS_tree built"<<endl;
-		NN_KD_Tree(h,s,HS_tree,"HS", 2);
+
+		NN_KD_Tree(h,s,HS_tree,1e10);
 		cout<<"HS_tree searched"<<endl;
+
 
 		cout<<"Closest fit box :"<<endl;
 		cout<<"Point i j :"<<endl;
@@ -1472,8 +1546,9 @@ void CLookUpTable::TableLoadCFX(char* filename){
 				}
 				if(var==1)
 				{
-					for (int k =0; k<ceil(float(set_x)/10.0);k++) getline(table,line); //skip density
-					for (int k =0; k<ceil(float(set_y)/10.0);k++) getline(table,line); //skip pressure
+					//Fixed a bug: lines already skipped for var==1
+					//for (int k =0; k<ceil(float(set_x)/10.0);k++) getline(table,line); //skip density
+					//for (int k =0; k<ceil(float(set_y)/10.0);k++) getline(table,line); //skip pressure
 
 					Enthalpy_limits[0] = 10E20;//lower limit
 					Enthalpy_limits[1] = 0;//upper limit
