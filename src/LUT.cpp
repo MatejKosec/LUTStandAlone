@@ -70,7 +70,7 @@ CLookUpTable::CLookUpTable() {
 			coeff[i][j] = 0;
 		}
 	}
-
+	HS_tree= NULL;
 	iIndex = -1;
 	jIndex = -1;
 	p_dim  = 0;
@@ -106,7 +106,6 @@ CLookUpTable::CLookUpTable(char* Filename) {
 				xtemp[p_dim*i+j] = ThermoTables[i][j].Enthalpy;
 				ytemp[p_dim*i+j] = ThermoTables[i][j].Entropy;
 				itemp[p_dim*i+j] = p_dim*i+j;
-				//cout<<itemp[p_dim*i+j]<<" "<<xtemp[p_dim*i+j]<<" "<<ytemp[p_dim*i+j]<<endl;
 			}
 		}
 		HS_tree = KD_Tree(xtemp, ytemp,itemp, p_dim*rho_dim, 0);
@@ -125,7 +124,7 @@ void  CLookUpTable::reset_Restart()
 }
 
 CLookUpTable::~CLookUpTable(void) {
-	free_KD_tree(HS_tree);
+	//free_KD_tree(HS_tree);
 	delete(ThermoTables);
 
 }
@@ -257,11 +256,14 @@ void CLookUpTable::NN_KD_Tree (su2double thermo1, su2double thermo2, KD_node *ro
 	su2double dist;
 	dist = Dist_KD_Tree(thermo1, thermo2, root);
 
-	cout<<iIndex<<" "<<jIndex<<"  "<<dist<<" "<<root->depth<<endl;
 
-	best_dist = dist;
-	iIndex = root->i_values[root->dim/2]/p_dim;
-	jIndex = root->i_values[root->dim/2]%p_dim;
+	if (dist<=best_dist)
+	{
+		best_dist = dist;
+		iIndex = root->i_values[root->dim/2]/p_dim;
+		jIndex = root->i_values[root->dim/2]%p_dim;
+	}
+	cout<<iIndex<<" "<<jIndex<<"  "<<dist<<" "<<best_dist<<" "<<root->depth<<endl;
 	if (root->dim>1)
 	{
 		if (root->depth%2==0)
@@ -657,8 +659,60 @@ void CLookUpTable::SetTDState_hs (su2double h, su2double s ) {
 		cout<<"Search the HS_tree"<<endl;
 		NN_KD_Tree(h,s,HS_tree,1e10);
 		cout<<"HS_tree searched"<<endl;
+		//If selected indices are on upper border, decrement them
+		if (iIndex==rho_dim-1) iIndex--;
+		if (jIndex==p_dim-1  ) jIndex--;
 
-		cout<<"i j :"<<iIndex<<" , "<<jIndex<<endl;
+		//After the search, 4 adjacent quads remain as possible candidates
+		su2double x,y,x00, y00, dx10, dx01, dx11, dy10, dy01, dy11;
+		bool BOTTOM, TOP, LEFT, RIGHT;
+
+		x = h - ThermoTables[iIndex][jIndex].Enthalpy;
+		y = s - ThermoTables[iIndex][jIndex].Entropy;
+		x00  = ThermoTables[iIndex  ][jIndex  ].Enthalpy     ;
+		y00  = ThermoTables[iIndex  ][jIndex  ].Entropy      ;
+		dx01 = ThermoTables[iIndex  ][jIndex+1].Enthalpy -x00;
+		dy01 = ThermoTables[iIndex  ][jIndex+1].Entropy  -y00;
+		dx10 = ThermoTables[iIndex+1][jIndex  ].Enthalpy -x00;
+		dy10 = ThermoTables[iIndex+1][jIndex  ].Entropy  -y00;
+		dx11 = ThermoTables[iIndex+1][jIndex+1].Enthalpy -x00;
+		dy11 = ThermoTables[iIndex+1][jIndex+1].Entropy  -y00;
+
+		BOTTOM = (y*dx10)<(x*dy10);
+		TOP = ((y-dy01)*(dx11-dx01))>((dy11-dy01)*(x-dx01));
+		RIGHT = ((x-dx10)*(dy11-dy10))>((dx11-dx10)*(y-dy10));
+		LEFT = (x*dy01)<(dx01*y);
+		//Check BOTTOM quad boundary
+		if(BOTTOM and !TOP)
+		{
+			if (jIndex!=0) jIndex--;
+			else
+			{
+				throw runtime_error("HS interpolation point lies below the table");
+			}
+		}
+		//Check RIGHT quad boundary
+		else if(RIGHT and !LEFT)
+		{
+			throw runtime_error("HS icorrect quad selected");
+		}
+
+		//Check TOP quad boundary
+		else if(TOP and !BOTTOM)
+		{
+			throw runtime_error("HS icorrect quad selected");
+		}
+		//Check LEFT quad boundary
+		else if(LEFT and !RIGHT)
+		{
+			if (iIndex!=0) iIndex--;
+			else
+			{
+				throw runtime_error("HS interpolation point lies to the left outside of the table");
+			}
+		}
+
+		cout<<"i,j :"<<iIndex<<" , "<<jIndex<<endl;
 		cout<<"Closest fit box :"<<endl;
 		cout<<"Point i j :"<<endl;
 		ThermoTables[iIndex][jIndex].CTLprint();
@@ -670,8 +724,6 @@ void CLookUpTable::SetTDState_hs (su2double h, su2double s ) {
 		ThermoTables[iIndex+1][jIndex+1].CTLprint();
 		//Now use the closest fit box to interpolate
 
-
-		su2double x, y;
 		x = h - ThermoTables[iIndex][jIndex].Enthalpy;
 		y = s - ThermoTables[iIndex][jIndex].Entropy;
 		//Determine interpolation coefficients
@@ -1057,23 +1109,55 @@ void CLookUpTable::Interp2D_ArbitrarySkewCoeff(su2double x, su2double y, std::st
 	//Check BOTTOM quad boundary
 	if(BOTTOM and !TOP)
 	{
-		throw runtime_error(grid_var+" interpolation point lies below bottom boundary of selected quad");
+		//added table limit detection
+		if (jIndex==0)
+		{
+			throw runtime_error(grid_var+" interpolation point lies below the LUT");
+		}
+		else
+		{
+			throw runtime_error(grid_var+" interpolation point lies below bottom boundary of selected quad");
+		}
 	}
 	//Check RIGHT quad boundary
 	if(RIGHT and !LEFT)
 	{
-		throw runtime_error(grid_var+" interpolation point lies to the right of the boundary of selected quad");
+		//added table limit detection
+		if (iIndex==0)
+		{
+			throw runtime_error(grid_var+" interpolation point lies left of the LUT");
+		}
+		else
+		{
+			throw runtime_error(grid_var+" interpolation point lies to the right of the boundary of selected quad");
+		}
 	}
 	//Check TOP quad boundary
 	if(TOP and !BOTTOM)
 	{
-		throw runtime_error(grid_var+" interpolation point lies above the boundary of selected quad");
+		//added table limit detection
+		if (jIndex==p_dim-1)
+		{
+			throw runtime_error(grid_var+" interpolation point lies above the LUT");
+		}
+		else
+		{
+			throw runtime_error(grid_var+" interpolation point lies above the boundary of selected quad");
+		}
 	}
 	//Check LEFT quad boundary
 
 	if(LEFT and !RIGHT)
 	{
-		throw runtime_error(grid_var+" interpolation point lies to the left of the boundary of selected quad");
+		//added table limit detection
+		if (iIndex==0)
+		{
+			throw runtime_error(grid_var+" interpolation point lies right of the LUT");
+		}
+		else
+		{
+			throw runtime_error(grid_var+" interpolation point lies to the left of the boundary of selected quad");
+		}
 	}
 	//Setup the LHM matrix for the interpolation
 	A[0][0] = dx10;
