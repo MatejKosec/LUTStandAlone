@@ -102,6 +102,7 @@ public:
 	 * \param[in] thermo2 - second thermodynamic variable
 	 * \param[in] input thermodynamic pair.
 	 */
+	void reset_Restart();
 	struct KD_node* KD_Tree(su2double* x_values, su2double* y_values, int* i_values, int dim, int depth);
 	su2double Dist_KD_Tree (su2double x, su2double y, KD_node *branch);
 	void free_KD_tree(KD_node* root);

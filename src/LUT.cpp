@@ -13,8 +13,6 @@
 
 using namespace std;
 
-
-
 CThermoList::CThermoList(){
 
 	StaticEnergy = 0.0; //yes
@@ -95,32 +93,22 @@ CLookUpTable::CLookUpTable(char* Filename) {
 		}
 		iIndex = -1;//negative number means it hasn't been preset yet
 		jIndex = -1;//same
-		cout<<"Here0 "<<ThermoTables[0][20].Entropy<<endl;
 		cout<<"p_dim  : "<<p_dim<<endl;
 		cout<<"rho_dim: "<<rho_dim<<endl;
-		cout<<"Build HS_tree"<<endl;
-		su2double* xtemp = new su2double[rho_dim*p_dim];//(su2double*) malloc(sizeof(su2double)*(rho_dim*p_dim));
-		su2double* ytemp = new su2double[rho_dim*p_dim];//(su2double*) malloc(sizeof(su2double)*(rho_dim*p_dim));
-		int* itemp 		 = new int[rho_dim*p_dim];//(int*) malloc(sizeof(int)*(rho_dim*p_dim));
+		cout<<"Building HS_tree"<<endl;
+		su2double* xtemp = new su2double[rho_dim*p_dim];
+		su2double* ytemp = new su2double[rho_dim*p_dim];
+		int* itemp 		 = new int[rho_dim*p_dim];
 		for (int i=0; i<rho_dim; i++)
 		{
 			for (int j=0; j<p_dim; j++)
 			{
-
-				//memcpy(&xtemp[p_dim*i+j], &ThermoTables[i][j].Enthalpy, sizeof(su2double));
-				xtemp[p_dim*i+j] =ThermoTables[i][j].Enthalpy;
-				//cout<<ThermoTables[i][j].Enthalpy<<endl;
-				//cout<<ThermoTables[i][j].Entropy<<endl;
-				//cout<<"Here1 i,j: "<<i<<" , "<<j<<" , "<<p_dim*i+j<<endl;
+				xtemp[p_dim*i+j] = ThermoTables[i][j].Enthalpy;
 				ytemp[p_dim*i+j] = ThermoTables[i][j].Entropy;
-				//cout<<"Here2 p_dim: "<<p_dim<<endl;
 				itemp[p_dim*i+j] = p_dim*i+j;
-				//cout<<"Here2 rho_dim: "<<rho_dim<<endl;
-				cout<<itemp[p_dim*i+j]<<" "<<xtemp[p_dim*i+j]<<" "<<ytemp[p_dim*i+j]<<endl;
+				//cout<<itemp[p_dim*i+j]<<" "<<xtemp[p_dim*i+j]<<" "<<ytemp[p_dim*i+j]<<endl;
 			}
-			cout<<"\n "<<endl;
 		}
-
 		HS_tree = KD_Tree(xtemp, ytemp,itemp, p_dim*rho_dim, 0);
 		cout<<"HS_tree built"<<endl;
 	}
@@ -130,12 +118,15 @@ CLookUpTable::CLookUpTable(char* Filename) {
 	}
 }
 
-
+void  CLookUpTable::reset_Restart()
+{
+	iIndex = -1;
+	jIndex = -1;
+}
 
 CLookUpTable::~CLookUpTable(void) {
-	delete(ThermoTables);
 	free_KD_tree(HS_tree);
-
+	delete(ThermoTables);
 
 }
 void CLookUpTable::free_KD_tree(KD_node* root)
@@ -163,10 +154,9 @@ struct KD_node* CLookUpTable::KD_Tree(su2double* x_values, su2double* y_values, 
 	if(dim>1)
 	{
 		su2double temp;
-		int itemp;
+		int itemp = 0;
 		int swaps = 0; //for bubblesort
 		bool sorted = false;
-
 
 		if (depth%2 ==0)
 		{
@@ -226,25 +216,20 @@ struct KD_node* CLookUpTable::KD_Tree(su2double* x_values, su2double* y_values, 
 				if (swaps==0) sorted = true;
 			}
 		}
-		cout<<"Here"<<endl;
 		//Create the new upper and lower arrays
 		su2double* upperx = new su2double[dim/2];
-		su2double* uppery = new su2double[dim/2];		//(su2double*) malloc(sizeof(su2double)*(dim/2));
-		int*  	   upperi = new int[dim/2];				//(int*) malloc(sizeof(su2double)*(dim/2));
-		su2double* lowerx = new su2double[dim-dim/2];	//(su2double*) malloc(sizeof(su2double)*(dim-dim/2));
-		su2double* lowery = new su2double[dim-dim/2];	//(su2double*) malloc(sizeof(su2double)*(dim-dim/2));
-		int*       loweri = new int[dim-dim/2];			//(int*) malloc(sizeof(int)*(dim-dim/2));
-		cout<<sizeof(su2double)<<endl;
-		cout<<dim/2<<endl;
-		cout<<dim-dim/2<<endl;
-		for (int i=0;i<dim/2;i++)
+		su2double* uppery = new su2double[dim/2];
+		int*  	   upperi = new int[dim/2];
+		su2double* lowerx = new su2double[dim-dim/2];
+		su2double* lowery = new su2double[dim-dim/2];
+		int*       loweri = new int[dim-dim/2];
+		for (int i=dim/2;i<dim;i++)
 		{
-			upperx[i] = x_values[i];
-			uppery[i] = y_values[i];
-			upperi[i] = i_values[i];
-			cout<<i<<endl;
+			upperx[i-dim/2] = x_values[i];
+			uppery[i-dim/2] = y_values[i];
+			upperi[i-dim/2] = i_values[i];
 		}
-		for (int i=dim/2;i<(dim-dim/2);i++)
+		for (int i=0;i<dim/2;i++)
 		{
 			lowerx[i] = x_values[i];
 			lowery[i] = y_values[i];
@@ -271,53 +256,36 @@ void CLookUpTable::NN_KD_Tree (su2double thermo1, su2double thermo2, KD_node *ro
 	//Recursive nearest neighbor search of the KD tree, without unwinding
 	su2double dist;
 	dist = Dist_KD_Tree(thermo1, thermo2, root);
-	if (dist<=best_dist)
+
+	cout<<iIndex<<" "<<jIndex<<"  "<<dist<<" "<<root->depth<<endl;
+
+	best_dist = dist;
+	iIndex = root->i_values[root->dim/2]/p_dim;
+	jIndex = root->i_values[root->dim/2]%p_dim;
+	if (root->dim>1)
 	{
-		best_dist = dist;
-		iIndex = root->i_values[0]%p_dim;
-		jIndex = root->i_values[0]/p_dim;
 		if (root->depth%2==0)
 		{
-			if (root->x_values[0]<=thermo1)
+			if (root->x_values[root->dim/2]<=thermo1)
 			{
-				NN_KD_Tree (thermo1, thermo2, root->upper, best_dist);
+				NN_KD_Tree(thermo1, thermo2, root->upper, best_dist);
 			}
-			else if (root->x_values[0]>thermo1)
+			else if (root->x_values[root->dim/2]>thermo1)
 			{
-				NN_KD_Tree (thermo1, thermo2, root->lower, best_dist);
+				NN_KD_Tree(thermo1, thermo2, root->lower, best_dist);
 			}
 		}
 		else if (root->depth%2==1)
 		{
-			if (root->x_values[0]<=thermo2)
+			if (root->y_values[root->dim/2]<=thermo2)
 			{
 				NN_KD_Tree (thermo1, thermo2, root->upper, best_dist);
 			}
-			else if (root->x_values[0]>thermo2)
+			else if (root->y_values[root->dim/2]>thermo2)
 			{
 				NN_KD_Tree (thermo1, thermo2, root->lower, best_dist);
 			}
 		}
-	}
-}
-
-
-void CLookUpTable::SearchZigZag (su2double thermo1, su2double thermo2,  unsigned long thermoPair ){
-
-	switch(thermoPair)
-	{
-	case 'RHOE':
-
-
-		break;
-	case 'PT':
-
-
-		break;
-	case 'PRHO':
-
-
-		break;
 	}
 
 }
@@ -357,15 +325,17 @@ void CLookUpTable::SetTDState_rhoe (su2double rho, su2double e ) {
 		UpperI = LowerI + 1;
 
 		//Determine the J index (for e), (e invariant with j)
+		int grad;
 		while(UpperJ-LowerJ>1)
 		{
+			grad = ThermoTables[LowerI][UpperJ].StaticEnergy - ThermoTables[LowerI][LowerJ].StaticEnergy;
 			//Load the value at the upper bound
 			RunVal = ThermoTables[UpperI][UpperJ].StaticEnergy;
-			if (RunVal>e)
+			if (grad*RunVal>grad*e)
 			{
 				UpperJ = LowerJ + ceil((UpperJ-LowerJ)/CFL);
 			}
-			else if (RunVal<e)
+			else if (grad*RunVal<grad*e)
 			{
 				int dif;
 				dif   = UpperJ + ceil((UpperJ-LowerJ)/CFL);
@@ -681,12 +651,14 @@ void CLookUpTable::SetTDState_hs (su2double h, su2double s ) {
 		}
 		cout<<endl<<"h desired : "<<h<<endl;
 		cout<<"s desired   : "<<s<<endl;
+		iIndex = HS_tree->i_values[HS_tree->dim/2]/p_dim;
+		jIndex = HS_tree->i_values[HS_tree->dim/2]%p_dim;
 
-
+		cout<<"Search the HS_tree"<<endl;
 		NN_KD_Tree(h,s,HS_tree,1e10);
 		cout<<"HS_tree searched"<<endl;
 
-
+		cout<<"i j :"<<iIndex<<" , "<<jIndex<<endl;
 		cout<<"Closest fit box :"<<endl;
 		cout<<"Point i j :"<<endl;
 		ThermoTables[iIndex][jIndex].CTLprint();
@@ -913,16 +885,16 @@ void CLookUpTable::SetTDState_rhoT (su2double rho, su2double T ) {
 			RunVal = ThermoTables[UpperI][UpperJ].Temperature;
 			if (grad*RunVal>grad*T)
 			{
-				UpperI = LowerI + ceil((UpperI-LowerI)/CFL);
+				UpperJ = LowerJ + ceil((UpperJ-LowerJ)/CFL);
 			}
 			else if (grad*RunVal<grad*T)
 			{
 				int dif;
-				dif   = UpperI + ceil((UpperI-LowerI)/CFL);
-				LowerI = UpperI;
-				UpperI = dif;
+				dif   = UpperJ + ceil((UpperJ-LowerJ)/CFL);
+				LowerJ = UpperJ;
+				UpperJ = dif;
 			}
-			cout<<LowerI<<"  "<<UpperI<<endl;
+			cout<<LowerJ<<"  "<<UpperJ<<endl;
 		}
 
 		iIndex = LowerI;
