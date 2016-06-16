@@ -314,35 +314,41 @@ void CLookUpTable::SetTDState_rhoe (su2double rho, su2double e ) {
 		unsigned int LowerJ;
 		unsigned int UpperJ;
 		//Restart search from previously used index if it exists, else go to middle
-		if (jIndex<0) LowerJ = 0;
-		if (jIndex>=0) LowerJ = jIndex;
-		if (jIndex<ceil(p_dim/2))
-		{
-			UpperJ = ceil(p_dim/2);
-		}
-		else UpperJ=p_dim;
+		//		if (jIndex<0) LowerJ = 0;
+		//		if (jIndex>=0) LowerJ = jIndex;
+		//		if (jIndex<ceil(p_dim/2))
+		//		{
+		//			UpperJ = ceil(p_dim/2);
+		//		}
+		//		else UpperJ=p_dim-1;
+		UpperJ = p_dim -1;
+		LowerJ = 0;
 
 		//Determine the I index: rho is equispaced (no restart)
 		LowerI = floor((rho-Density_limits[0])/(Density_limits[1]-Density_limits[0])*(rho_dim-1));
 		UpperI = LowerI + 1;
 
-		//Determine the J index (for e), (e invariant with j)
-		int grad;
+		su2double grad, x00, y00, y10, x10;
+
 		while(UpperJ-LowerJ>1)
 		{
-			grad = ThermoTables[LowerI][UpperJ].StaticEnergy - ThermoTables[LowerI][LowerJ].StaticEnergy;
-			//Load the value at the upper bound
-			RunVal = ThermoTables[UpperI][UpperJ].StaticEnergy;
-			if (grad*RunVal>grad*e)
+			//Check current value
+			y00 = ThermoTables[LowerI][LowerJ].StaticEnergy;
+			y10 = ThermoTables[UpperI][LowerJ].StaticEnergy;
+			x00 = ThermoTables[LowerI][LowerJ].Density;
+			x10 = ThermoTables[UpperI][LowerJ].Density;
+			//BUG FIXED: interpolate the 'e' value along the line between the two rho values
+			//also applied to all other searches.
+			RunVal = y00 + (y10-y00)/(x10-x00)*(rho-x00);
+			grad = ThermoTables[LowerI][UpperJ].StaticEnergy-y00;
+			if (grad*RunVal<grad*e)
 			{
-				UpperJ = LowerJ + ceil((UpperJ-LowerJ)/CFL);
+				LowerJ = LowerJ + ceil((UpperJ-LowerJ)/CFL);
 			}
-			else if (grad*RunVal<grad*e)
+			else if (grad*RunVal>grad*e)
 			{
-				int dif;
-				dif   = UpperJ + ceil((UpperJ-LowerJ)/CFL);
-				LowerJ = UpperJ;
-				UpperJ = dif;
+				UpperJ  = LowerJ;
+				LowerJ = LowerJ/CFL;
 			}
 			cout<<LowerJ<<"  "<<UpperJ<<endl;
 		}
@@ -438,13 +444,15 @@ void CLookUpTable::SetTDState_PT (su2double P, su2double T ) {
 		unsigned int LowerJ;
 		unsigned int UpperJ;
 		//Restart search from previously used index if it exists, else go to middle
-		if (iIndex<0) LowerI = 0;
-		if (iIndex>=0) LowerI = iIndex;
-		if  (iIndex<ceil(rho_dim/2))
-		{
-			UpperI = ceil(rho_dim/2); //probably can be made more efficient (smaller square)
-		}
-		else UpperI = rho_dim;
+		//		if (iIndex<0) LowerI = 0;
+		//		if (iIndex>=0) LowerI = iIndex;
+		//		if  (iIndex<ceil(rho_dim/2))
+		//		{
+		//			UpperI = ceil(rho_dim/2); //probably can be made more efficient (smaller square)
+		//		}
+		//		else UpperI = rho_dim-1;
+		LowerI = 0;
+		UpperI = rho_dim-1;
 
 
 		//Determine the J index: P is equispaced (no restart)
@@ -452,23 +460,23 @@ void CLookUpTable::SetTDState_PT (su2double P, su2double T ) {
 		UpperJ = LowerJ + 1;
 
 		//Determine the I index (for T)
-		//Temperature is not necessarily monotonic (so use a variable to take care of overall sign)
-		int grad;
+		su2double grad, x00, y00, y01, x01;
 		while(UpperI-LowerI>1)
 		{
-			grad = ThermoTables[UpperI][UpperJ].Temperature - ThermoTables[LowerI][UpperJ].Temperature;
-			//Load the value at the upper bound
-			RunVal = ThermoTables[UpperI][UpperJ].Temperature;
+			y00 = ThermoTables[LowerI][LowerJ].Pressure;
+			y01 = ThermoTables[LowerI][UpperJ].Pressure;
+			x00 = ThermoTables[LowerI][LowerJ].Temperature;
+			x01 = ThermoTables[LowerI][UpperJ].Temperature;
+			grad = ThermoTables[UpperI][LowerJ].Temperature - x00;
+			RunVal = x00 + (x01-x00)/(y01-y00)*(P-y00);
 			if (grad*RunVal>grad*T)
 			{
-				UpperI = LowerI + ceil((UpperI-LowerI)/CFL);
+				LowerI = LowerI + ceil((UpperI-LowerI)/CFL);
 			}
 			else if (grad*RunVal<grad*T)
 			{
-				int dif;
-				dif   = UpperI + ceil((UpperI-LowerI)/CFL);
-				LowerI = UpperI;
-				UpperI = dif;
+				UpperI = LowerI;
+				LowerI = LowerI/2;
 			}
 			cout<<LowerI<<"  "<<UpperI<<endl;
 		}
@@ -794,38 +802,43 @@ void CLookUpTable::SetTDState_Ps (su2double P, su2double s )
 		unsigned int LowerJ;
 		unsigned int UpperJ;
 		//Restart search from previously used index if it exists, else go to middle
-		if (iIndex<0) LowerI = 0;
-		if (iIndex>=0) LowerI = iIndex;
-		if  (iIndex<ceil(rho_dim/2))
-		{
-			UpperI = ceil(rho_dim/2); //probably can be made more efficient (smaller square)
-		}
-		else UpperI = rho_dim;
+		//		if (iIndex<0) LowerI = 0;
+		//		if (iIndex>=0) LowerI = iIndex;
+		//		if  (iIndex<ceil(rho_dim/2))
+		//		{
+		//			UpperI = ceil(rho_dim/2); //probably can be made more efficient (smaller square)
+		//		}
+		//		else UpperI = rho_dim-1;
+		LowerI = 0;
+		UpperI = rho_dim-1;
+		cout<<LowerI<<"  "<<UpperI<<endl;
 
 		//Determine the I index: RHO is equispaced (no restart)
 		LowerJ = floor((P-Pressure_limits[0])/(Pressure_limits[1]-Pressure_limits[0])*(p_dim-1));
 		UpperJ = LowerJ + 1;
 
-		//Determine the J index (for s), (s invariant with j)
-		int grad;
+		//Determine the J index (for s)
+		su2double grad, x00, y00, y01, x01;
 		while(UpperI-LowerI>1)
 		{
-			//Load the value at the upper bound
-			grad = ThermoTables[UpperI][UpperJ].Entropy - ThermoTables[LowerI][UpperJ].Entropy;
-			RunVal = ThermoTables[UpperI][UpperJ].Entropy ;
-			if (grad*RunVal>grad*s)
+			y00 = ThermoTables[LowerI][LowerJ].Pressure;
+			y01 = ThermoTables[LowerI][UpperJ].Pressure;
+			x00 = ThermoTables[LowerI][LowerJ].Entropy;
+			x01 = ThermoTables[LowerI][UpperJ].Entropy;
+			grad = ThermoTables[UpperI][LowerJ].Entropy - x00;
+			RunVal = x00 + (x01-x00)/(y01-y00)*(P-y00);
+			if (grad*RunVal<grad*s)
 			{
-				UpperI = LowerI + ceil((UpperI-LowerI)/CFL);
+				LowerI = LowerI + ceil((UpperI-LowerI)/CFL);
 			}
-			else if (grad*RunVal<grad*s)
+			else if (grad*RunVal>grad*s)
 			{
-				int dif;
-				dif   = UpperI + ceil((UpperI-LowerI)/CFL);
-				LowerI = UpperI;
-				UpperI = dif;
+				UpperI = LowerI;
+				LowerI = LowerI/2;
 			}
 			cout<<LowerI<<"  "<<UpperI<<endl;
 		}
+
 
 		iIndex = LowerI;
 		jIndex = LowerJ;
@@ -916,35 +929,42 @@ void CLookUpTable::SetTDState_rhoT (su2double rho, su2double T ) {
 		unsigned int LowerJ;
 		unsigned int UpperJ;
 		//Restart search from previously used index if it exists, else go to middle
-		if (jIndex<0) LowerJ = 0;
-		if (jIndex>=0) LowerJ = jIndex;
-		if (jIndex<ceil(p_dim/2))
-		{
-			UpperJ = ceil(p_dim/2);
-		}
-		else UpperJ=p_dim;
+		//		if (jIndex<0) LowerJ = 0;
+		//		if (jIndex>=0) LowerJ = jIndex;
+		//		if (jIndex<ceil(p_dim/2))
+		//		{
+		//			UpperJ = ceil(p_dim/2);
+		//		}
+		//		else UpperJ=p_dim-1;
+		LowerJ = 0;
+		UpperJ = 0;
 
 		//Determine the I index: RHO is equispaced (no restart)
 		LowerI = floor((rho-Density_limits[0])/(Density_limits[1]-Density_limits[0])*(rho_dim-1));
 		UpperI = LowerI + 1;
 
 		//Determine the I index (for T)
-		//Temperature is not necessarily monotonic (so use a variable to take care of overall sign)
-		while(UpperI-LowerI>1)
+		su2double grad, x00, y00, y10, x10;
+
+		while(UpperJ-LowerJ>1)
 		{
-			int grad = ThermoTables[UpperI][UpperJ].Temperature - ThermoTables[LowerI][UpperJ].Temperature;
-			//Load the value at the upper bound
-			RunVal = ThermoTables[UpperI][UpperJ].Temperature;
-			if (grad*RunVal>grad*T)
+			//Check current value
+			y00 = ThermoTables[LowerI][LowerJ].Temperature;
+			y10 = ThermoTables[UpperI][LowerJ].Temperature;
+			x00 = ThermoTables[LowerI][LowerJ].Density;
+			x10 = ThermoTables[UpperI][LowerJ].Density;
+			//BUG FIXED: interpolate the 'e' value along the line between the two rho values
+			//also applied to all other searches.
+			RunVal = y00 + (y10-y00)/(x10-x00)*(rho-x00);
+			grad = ThermoTables[LowerI][UpperJ].Temperature-y00;
+			if (grad*RunVal<grad*T)
 			{
-				UpperJ = LowerJ + ceil((UpperJ-LowerJ)/CFL);
+				LowerJ = LowerJ + ceil((UpperJ-LowerJ)/CFL);
 			}
-			else if (grad*RunVal<grad*T)
+			else if (grad*RunVal>grad*T)
 			{
-				int dif;
-				dif   = UpperJ + ceil((UpperJ-LowerJ)/CFL);
-				LowerJ = UpperJ;
-				UpperJ = dif;
+				UpperJ  = LowerJ;
+				LowerJ = LowerJ/CFL;
 			}
 			cout<<LowerJ<<"  "<<UpperJ<<endl;
 		}
@@ -1123,9 +1143,9 @@ void CLookUpTable::Interp2D_ArbitrarySkewCoeff(su2double x, su2double y, std::st
 	if(RIGHT and !LEFT)
 	{
 		//added table limit detection
-		if (iIndex==0)
+		if (iIndex==(rho_dim-1))
 		{
-			throw runtime_error(grid_var+" interpolation point lies left of the LUT");
+			throw runtime_error(grid_var+" interpolation point lies right of the LUT");
 		}
 		else
 		{
@@ -1152,7 +1172,7 @@ void CLookUpTable::Interp2D_ArbitrarySkewCoeff(su2double x, su2double y, std::st
 		//added table limit detection
 		if (iIndex==0)
 		{
-			throw runtime_error(grid_var+" interpolation point lies right of the LUT");
+			throw runtime_error(grid_var+" interpolation point lies left of the LUT");
 		}
 		else
 		{
