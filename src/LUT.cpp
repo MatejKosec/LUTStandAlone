@@ -63,6 +63,7 @@ CThermoList::~CThermoList(){
 
 CLookUpTable::CLookUpTable() {
 	ThermoTables = NULL;
+	CThermoList interpolated;
 	for (int i=0; i<3; i++)
 	{
 		for (int j=0; j<3; j++)
@@ -81,6 +82,7 @@ CLookUpTable::CLookUpTable() {
 
 CLookUpTable::CLookUpTable(char* Filename) {
 	ThermoTables = NULL;
+	CThermoList interpolated;
 	try
 	{
 		TableLoadCFX(Filename);
@@ -382,7 +384,7 @@ void CLookUpTable::SetTDState_rhoe (su2double rho, su2double e ) {
 		{
 			cout<<setw(15)<<coeff[j][0]<<"   "<<coeff[j][1]<<"   "<<coeff[j][2]<<endl;
 		}
-		CThermoList interpolated;
+
 		interpolated.StaticEnergy      = e;
 		interpolated.Density           = rho ;
 		interpolated.Enthalpy          = Interp2D_lin(x, y, "Enthalpy" );
@@ -507,7 +509,7 @@ void CLookUpTable::SetTDState_PT (su2double P, su2double T ) {
 		{
 			cout<<setw(15)<<coeff[j][0]<<"   "<<coeff[j][1]<<"   "<<coeff[j][2]<<endl;
 		}
-		CThermoList interpolated;
+
 		interpolated.Temperature       = T;
 		interpolated.Pressure          = P ;
 		interpolated.Enthalpy          = Interp2D_lin(x, y, "Enthalpy" );
@@ -602,7 +604,7 @@ void CLookUpTable::SetTDState_Prho (su2double P, su2double rho ) {
 		{
 			cout<<setw(15)<<coeff[j][0]<<"   "<<coeff[j][1]<<"   "<<coeff[j][2]<<endl;
 		}
-		CThermoList interpolated;
+
 		interpolated.Pressure           = P;
 		interpolated.Density           = rho ;
 		interpolated.Enthalpy          = Interp2D_lin(x, y, "Enthalpy" );
@@ -741,7 +743,7 @@ void CLookUpTable::SetTDState_hs (su2double h, su2double s ) {
 		{
 			cout<<setw(15)<<coeff[j][0]<<"   "<<coeff[j][1]<<"   "<<coeff[j][2]<<endl;
 		}
-		CThermoList interpolated;
+
 		interpolated.Entropy           = s;
 		interpolated.Enthalpy          = h;
 		interpolated.StaticEnergy      = Interp2D_lin(x, y, "StaticEnergy" );
@@ -868,7 +870,7 @@ void CLookUpTable::SetTDState_Ps (su2double P, su2double s )
 		{
 			cout<<setw(15)<<coeff[j][0]<<"   "<<coeff[j][1]<<"   "<<coeff[j][2]<<endl;
 		}
-		CThermoList interpolated;
+
 		interpolated.Entropy           = s;
 		interpolated.Pressure          = P ;
 		interpolated.Enthalpy          = Interp2D_lin(x, y, "Enthalpy" );
@@ -937,7 +939,7 @@ void CLookUpTable::SetTDState_rhoT (su2double rho, su2double T ) {
 		//		}
 		//		else UpperJ=p_dim-1;
 		LowerJ = 0;
-		UpperJ = 0;
+		UpperJ = p_dim-1;
 
 		//Determine the I index: RHO is equispaced (no restart)
 		LowerI = floor((rho-Density_limits[0])/(Density_limits[1]-Density_limits[0])*(rho_dim-1));
@@ -997,7 +999,7 @@ void CLookUpTable::SetTDState_rhoT (su2double rho, su2double T ) {
 		{
 			cout<<setw(15)<<coeff[j][0]<<"   "<<coeff[j][1]<<"   "<<coeff[j][2]<<endl;
 		}
-		CThermoList interpolated;
+
 		interpolated.Temperature       = T;
 		interpolated.Density           = rho ;
 		interpolated.Enthalpy          = Interp2D_lin(x, y, "Enthalpy" );
@@ -1450,6 +1452,34 @@ void CLookUpTable::LUTprint(void)
 		}
 	}
 }
+
+void CLookUpTable::RecordState(char* file)
+{
+	fstream fs;
+	fs.open(file, fstream::app);
+	assert(fs.is_open());
+	fs << interpolated.Temperature<<", ";
+	fs << interpolated.Density<<", ";
+	fs << interpolated.Enthalpy<<", ";
+	fs << interpolated.StaticEnergy<<", ";
+	fs << interpolated.Entropy<<", ";
+	fs << interpolated.Pressure<<", ";
+	fs << interpolated.SoundSpeed2<<", ";
+	fs << interpolated.dPdrho_e<<", ";
+	fs << interpolated.dPde_rho<<", ";
+	fs << interpolated.dTdrho_e<<", ";
+	fs << interpolated.dTde_rho<<", ";
+	fs << interpolated.Cp<<", ";
+	fs << interpolated.Mu<<", ";
+	fs << interpolated.dmudrho_T<<", ";
+	fs << interpolated.dmudT_rho<<", ";
+	fs << interpolated.Kt<<", ";
+	fs << interpolated.dktdrho_T<<", ";
+	fs << interpolated.dktdT_rho<<", ";
+	fs << "\n";
+	fs.close();
+}
+
 
 
 void CLookUpTable::TableLoadCFX(char* filename){

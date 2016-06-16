@@ -59,6 +59,7 @@ protected:
 	long iIndex, jIndex;
 	int p_dim, rho_dim; /*!< \brief The pressure and density dimensions of the table */
 	KD_node *HS_tree; //KD tree for HS thermoPair
+	CThermoList interpolated;
 
 	su2double StaticEnergy_limits[2];
 	su2double Entropy_limits[2];
@@ -169,6 +170,7 @@ public:
 	su2double Interp2D_lin(su2double x, su2double y, std::string interpolant_var);
 	void TableLoadCFX(char* filename);
 	void LUTprint(void);
+	void RecordState(char* file);
 
 };
 
