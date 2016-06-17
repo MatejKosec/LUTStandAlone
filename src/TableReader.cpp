@@ -97,7 +97,7 @@ int main() {
 	}
 	fs.close();
 	//wipe the outfile before writing to it
-	outfile = (char*) "Phoe_out.dat";
+	outfile = (char*) "Prho_out.dat";
 	fs.open(outfile, fstream::trunc);
 	for (int j=0; j<i;j++)
 	{
