@@ -23,6 +23,8 @@ using namespace std;
 int main() {
 
 	char* tablefile= (char*) "CO2.rgp";
+	char* gridfile = (char*) "mesh.dat";
+
 	char* outfile;
 	su2double rho[500];
 	su2double e[500];
@@ -34,7 +36,15 @@ int main() {
 	fstream fs;
 	int i;
 
+
 	CLookUpTable LUT2 = CLookUpTable(tablefile);
+
+	fs.open(gridfile, fstream::out |fstream::trunc);
+	fs<<"";
+	fs.close();
+	LUT2.TableDump(gridfile);
+
+	//LUT2.SetTDState_rhoe(85, 570000);
 
 	cout<<"--------------------------------------------------------------\n";
 	cout<<"RHOE \n";
@@ -48,15 +58,18 @@ int main() {
 		i++;
 	}
 	fs.close();
+
 	//wipe the outfile before writing to it
 	outfile = (char*) "rhoe_out.dat";
-	fs.open(outfile, fstream::trunc);
+	fs.open(outfile, fstream::out |fstream::trunc);
+	fs.close();
 	for (int j=0; j<i;j++)
 	{
 		cout<<j<<endl;
 		LUT2.SetTDState_rhoe(rho[j], e[j]);
 		LUT2.RecordState(outfile);
 	}
+
 
 	cout<<"--------------------------------------------------------------\n";
 	cout<<"PT"<<endl;
@@ -73,7 +86,8 @@ int main() {
 	fs.close();
 	//wipe the outfile before writing to it
 	outfile = (char*) "PT_out.dat";
-	fs.open(outfile, fstream::trunc);
+	fs.open(outfile, fstream::out |fstream::trunc);
+	fs.close();
 	for (int j=0; j<i;j++)
 	{
 		cout<<j<<endl;
@@ -98,13 +112,15 @@ int main() {
 	fs.close();
 	//wipe the outfile before writing to it
 	outfile = (char*) "Prho_out.dat";
-	fs.open(outfile, fstream::trunc);
+	fs.open(outfile, fstream::out |fstream::trunc);
+	fs.close();
 	for (int j=0; j<i;j++)
 	{
 		cout<<j<<endl;
 		LUT2.SetTDState_Prho(P[j], rho[j]);
 		LUT2.RecordState(outfile);
 	}
+
 	//LUT2.SetTDState_Prho(5521052, 80);
 
 	cout<<"--------------------------------------------------------------\n";
@@ -122,7 +138,8 @@ int main() {
 	fs.close();
 	//wipe the outfile before writing to it
 	outfile = (char*) "rhoT_out.dat";
-	fs.open(outfile, fstream::trunc);
+	fs.open(outfile, fstream::out |fstream::trunc);
+	fs.close();
 	for (int j=0; j<i;j++)
 	{
 		cout<<j<<endl;
@@ -147,7 +164,8 @@ int main() {
 	fs.close();
 	//wipe the outfile before writing to it
 	outfile = (char*) "Ps_out.dat";
-	fs.open(outfile, fstream::trunc);
+	fs.open(outfile, fstream::out |fstream::trunc);
+	fs.close();
 	for (int j=0; j<i;j++)
 	{
 		cout<<j<<endl;
@@ -155,7 +173,6 @@ int main() {
 		LUT2.RecordState(outfile);
 	}
 	//LUT2.SetTDState_Ps(5400000, 2200);
-	//LUT2.reset_Restart();
 
 	cout<<"--------------------------------------------------------------\n";
 
@@ -172,7 +189,8 @@ int main() {
 	fs.close();
 	//wipe the outfile before writing to it
 	outfile = (char*) "hs_out.dat";
-	fs.open(outfile, fstream::trunc);
+	fs.open(outfile, fstream::out |fstream::trunc);
+	fs.close();
 	for (int j=0; j<i;j++)
 	{
 		cout<<j<<endl;

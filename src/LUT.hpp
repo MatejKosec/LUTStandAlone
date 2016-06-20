@@ -170,7 +170,9 @@ public:
 	su2double Interp2D_lin(su2double x, su2double y, std::string interpolant_var);
 	void TableLoadCFX(char* filename);
 	void LUTprint(void);
+	void TableDump(char* filename);
 	void RecordState(char* file);
+
 
 };
 
