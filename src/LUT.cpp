@@ -454,16 +454,16 @@ void CLookUpTable::SetTDState_PT (su2double P, su2double T ) {
 			y01 = ThermoTables[LowerI][UpperJ].Pressure;
 			x00 = ThermoTables[LowerI][LowerJ].Temperature;
 			x01 = ThermoTables[LowerI][UpperJ].Temperature;
-			grad = ThermoTables[UpperI][LowerJ].Temperature - x00;
+			grad = ThermoTables[UpperI][LowerJ].Temperature-x00;
 			RunVal = x00 + (x01-x00)/(y01-y00)*(P-y00);
-			if (grad*RunVal>grad*T)
+			if (grad*RunVal<=grad*T)
 			{
 				LowerI = LowerI + ceil((UpperI-LowerI)/CFL);
 			}
-			else if (grad*RunVal<grad*T)
+			else if (grad*RunVal>grad*T)
 			{
 				UpperI = LowerI;
-				LowerI = LowerI/2;
+				LowerI = LowerI/CFL;
 			}
 			cout<<LowerI<<"  "<<UpperI<<endl;
 		}
@@ -793,7 +793,7 @@ void CLookUpTable::SetTDState_Ps (su2double P, su2double s )
 			x01 = ThermoTables[LowerI][UpperJ].Entropy;
 			grad = ThermoTables[UpperI][LowerJ].Entropy - x00;
 			RunVal = x00 + (x01-x00)/(y01-y00)*(P-y00);
-			if (grad*RunVal<grad*s)
+			if (grad*RunVal<=grad*s)
 			{
 				LowerI = LowerI + ceil((UpperI-LowerI)/CFL);
 			}
