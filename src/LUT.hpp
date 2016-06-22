@@ -79,6 +79,9 @@ protected:
 	su2double Kt_limits[2];
 	su2double dktdrho_T_limits[2];
 	su2double dktdT_rho_limits[2];
+	//Nearest neighbour's i and j indexes
+	int NN_i[4];
+	int NN_j[4];
 
 public:
 
@@ -107,7 +110,7 @@ public:
 	struct KD_node* KD_Tree(su2double* x_values, su2double* y_values, int* i_values, int dim, int depth);
 	su2double Dist_KD_Tree (su2double x, su2double y, KD_node *branch);
 	void free_KD_tree(KD_node* root);
-	void NN_KD_Tree (su2double thermo1, su2double thermo2, KD_node *root, su2double best_dist);
+	void NN_KD_Tree (su2double thermo1, su2double thermo2, KD_node *root, su2double* best_dist);
 	void SearchZigZag (su2double thermo1, su2double thermo2,  unsigned long thermoPair );
 	void SearchThermoPair (su2double thermo1, su2double thermo2,  unsigned long thermoPair );
 
