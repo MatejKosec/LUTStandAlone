@@ -1823,7 +1823,9 @@ void CLookUpTable::TableLoadCFX(char* filename){
 								getline(table,line);
 								cout<<line<<endl;
 								istringstream in(line);
-								for (int z = 0; z<10; z++)
+								var_steps = 10;
+								if (((set_x*set_y) - (j*set_x+i))<10) var_steps = ((set_x*set_y) - (j*set_x+i));
+								for (int z = 0; z<var_steps; z++)
 								{
 									in>>inp[z];
 								}
@@ -1863,7 +1865,9 @@ void CLookUpTable::TableLoadCFX(char* filename){
 								getline(table,line);
 								cout<<line<<endl;
 								istringstream in(line);
-								for (int z = 0; z<10; z++)
+								var_steps = 10;
+								if (((set_x*set_y) - (j*set_x+i))<10) var_steps = ((set_x*set_y) - (j*set_x+i));
+								for (int z = 0; z<var_steps; z++)
 								{
 									in>>inp[z];
 								}
@@ -1901,7 +1905,9 @@ void CLookUpTable::TableLoadCFX(char* filename){
 								getline(table,line);
 								cout<<line<<endl;
 								istringstream in(line);
-								for (int z = 0; z<10; z++)
+								var_steps = 10;
+								if (((set_x*set_y) - (j*set_x+i))<10) var_steps = ((set_x*set_y) - (j*set_x+i));
+								for (int z = 0; z<var_steps; z++)
 								{
 									in>>inp[z];
 								}
@@ -1940,7 +1946,9 @@ void CLookUpTable::TableLoadCFX(char* filename){
 								getline(table,line);
 								cout<<line<<endl;
 								istringstream in(line);
-								for (int z = 0; z<10; z++)
+								var_steps = 10;
+								if (((set_x*set_y) - (j*set_x+i))<10) var_steps = ((set_x*set_y) - (j*set_x+i));
+								for (int z = 0; z<var_steps; z++)
 								{
 									in>>inp[z];
 								}
@@ -2017,7 +2025,9 @@ void CLookUpTable::TableLoadCFX(char* filename){
 								getline(table,line);
 								cout<<line<<endl;
 								istringstream in(line);
-								for (int z = 0; z<10; z++)
+								var_steps = 10;
+								if (((set_x*set_y) - (j*set_x+i))<10) var_steps = ((set_x*set_y) - (j*set_x+i));
+								for (int z = 0; z<var_steps; z++)
 								{
 									in>>inp[z];
 								}
@@ -2056,7 +2066,9 @@ void CLookUpTable::TableLoadCFX(char* filename){
 								getline(table,line);
 								cout<<line<<endl;
 								istringstream in(line);
-								for (int z = 0; z<10; z++)
+								var_steps = 10;
+								if (((set_x*set_y) - (j*set_x+i))<10) var_steps = ((set_x*set_y) - (j*set_x+i));
+								for (int z = 0; z<var_steps; z++)
 								{
 									in>>inp[z];
 								}
@@ -2096,7 +2108,9 @@ void CLookUpTable::TableLoadCFX(char* filename){
 								getline(table,line);
 								cout<<line<<endl;
 								istringstream in(line);
-								for (int z = 0; z<10; z++)
+								var_steps = 10;
+								if (((set_x*set_y) - (j*set_x+i))<10) var_steps = ((set_x*set_y) - (j*set_x+i));
+								for (int z = 0; z<var_steps; z++)
 								{
 									in>>inp[z];
 								}
@@ -2136,7 +2150,9 @@ void CLookUpTable::TableLoadCFX(char* filename){
 								getline(table,line);
 								cout<<line<<endl;
 								istringstream in(line);
-								for (int z = 0; z<10; z++)
+								var_steps = 10;
+								if (((set_x*set_y) - (j*set_x+i))<10) var_steps = ((set_x*set_y) - (j*set_x+i));
+								for (int z = 0; z<var_steps; z++)
 								{
 									in>>inp[z];
 								}
@@ -2174,7 +2190,9 @@ void CLookUpTable::TableLoadCFX(char* filename){
 								getline(table,line);
 								cout<<line<<endl;
 								istringstream in(line);
-								for (int z = 0; z<10; z++)
+								var_steps = 10;
+								if (((set_x*set_y) - (j*set_x+i))<10) var_steps = ((set_x*set_y) - (j*set_x+i));
+								for (int z = 0; z<var_steps; z++)
 								{
 									in>>inp[z];
 								}
@@ -2213,7 +2231,9 @@ void CLookUpTable::TableLoadCFX(char* filename){
 								getline(table,line);
 								cout<<line<<endl;
 								istringstream in(line);
-								for (int z = 0; z<10; z++)
+								var_steps = 10;
+								if (((set_x*set_y) - (j*set_x+i))<10) var_steps = ((set_x*set_y) - (j*set_x+i));
+								for (int z = 0; z<var_steps; z++)
 								{
 									in>>inp[z];
 								}
@@ -2252,7 +2272,9 @@ void CLookUpTable::TableLoadCFX(char* filename){
 								getline(table,line);
 								cout<<line<<endl;
 								istringstream in(line);
-								for (int z = 0; z<10; z++)
+								var_steps = 10;
+								if (((set_x*set_y) - (j*set_x+i))<10) var_steps = ((set_x*set_y) - (j*set_x+i));
+								for (int z = 0; z<var_steps; z++)
 								{
 									in>>inp[z];
 								}
