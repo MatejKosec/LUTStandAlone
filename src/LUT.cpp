@@ -1681,7 +1681,6 @@ void CLookUpTable::TableLoadCFX(char* filename){
 	int set_y = 0;
 	int var_steps = 0;
 	int var_scanned=0;
-	int ind;
 
 	string line;
 	string value;
@@ -1816,7 +1815,6 @@ void CLookUpTable::TableLoadCFX(char* filename){
 					StaticEnergy_limits[1] = 0;//upper limit
 
 					su2double inp[10];
-					ind = 0;
 
 					for (int j =0; j<set_y; j++)
 					{
@@ -1828,23 +1826,21 @@ void CLookUpTable::TableLoadCFX(char* filename){
 								cout<<line<<endl;
 								istringstream in(line);
 								var_steps = 10;
-								ind = 0;
 								if (((set_x*set_y) - (j*set_x+i))<10) var_steps = ((set_x*set_y) - (j*set_x+i));
 								for (int z = 0; z<var_steps; z++)
 								{
 									in>>inp[z];
 								}
 							}
-							ThermoTables[i][j].StaticEnergy = inp[ind];
-							if (inp[ind]>StaticEnergy_limits[1])
+							ThermoTables[i][j].StaticEnergy = inp[(j*set_x+i)%10];
+							if (inp[(j*set_x+i)%10]>StaticEnergy_limits[1])
 							{
-								StaticEnergy_limits[1]= inp[ind];
+								StaticEnergy_limits[1]= inp[(j*set_x+i)%10];
 							}
-							if (inp[ind]<StaticEnergy_limits[0])
+							if (inp[(j*set_x+i)%10]<StaticEnergy_limits[0])
 							{
-								StaticEnergy_limits[0]=inp[ind];
+								StaticEnergy_limits[0]=inp[(j*set_x+i)%10];
 							}
-							ind++;
 						}
 
 					}
@@ -1861,7 +1857,6 @@ void CLookUpTable::TableLoadCFX(char* filename){
 					Enthalpy_limits[1] = 0;//upper limit
 
 					su2double inp[10];
-					ind = 0;
 
 					for (int j =0; j<set_y; j++)
 					{
@@ -1873,23 +1868,21 @@ void CLookUpTable::TableLoadCFX(char* filename){
 								cout<<line<<endl;
 								istringstream in(line);
 								var_steps = 10;
-								ind = 0;
 								if (((set_x*set_y) - (j*set_x+i))<10) var_steps = ((set_x*set_y) - (j*set_x+i));
 								for (int z = 0; z<var_steps; z++)
 								{
 									in>>inp[z];
 								}
 							}
-							ThermoTables[i][j].Enthalpy = inp[ind];
-							if (inp[ind]>Enthalpy_limits[1])
+							ThermoTables[i][j].Enthalpy = inp[(j*set_x+i)%10];
+							if (inp[(j*set_x+i)%10]>Enthalpy_limits[1])
 							{
-								Enthalpy_limits[1]= inp[ind];
+								Enthalpy_limits[1]= inp[(j*set_x+i)%10];
 							}
-							if (inp[ind]<Enthalpy_limits[0])
+							if (inp[(j*set_x+i)%10]<Enthalpy_limits[0])
 							{
-								Enthalpy_limits[0]=inp[ind];
+								Enthalpy_limits[0]=inp[(j*set_x+i)%10];
 							}
-							ind++;
 						}
 
 					}
@@ -1904,8 +1897,6 @@ void CLookUpTable::TableLoadCFX(char* filename){
 					SoundSpeed2_limits[1] = 0;//upper limit
 
 					su2double inp[10];
-					ind = 0;
-
 
 					for (int j =0; j<set_y; j++)
 					{
@@ -1917,23 +1908,21 @@ void CLookUpTable::TableLoadCFX(char* filename){
 								cout<<line<<endl;
 								istringstream in(line);
 								var_steps = 10;
-								ind = 0;
 								if (((set_x*set_y) - (j*set_x+i))<10) var_steps = ((set_x*set_y) - (j*set_x+i));
 								for (int z = 0; z<var_steps; z++)
 								{
 									in>>inp[z];
 								}
 							}
-							ThermoTables[i][j].SoundSpeed2 = inp[ind];
-							if (inp[ind]>SoundSpeed2_limits[1])
+							ThermoTables[i][j].SoundSpeed2 = inp[(j*set_x+i)%10];
+							if (inp[(j*set_x+i)%10]>SoundSpeed2_limits[1])
 							{
-								SoundSpeed2_limits[1]= inp[ind];
+								SoundSpeed2_limits[1]= inp[(j*set_x+i)%10];
 							}
-							if (inp[ind]<SoundSpeed2_limits[0])
+							if (inp[(j*set_x+i)%10]<SoundSpeed2_limits[0])
 							{
-								SoundSpeed2_limits[0]=inp[ind];
+								SoundSpeed2_limits[0]=inp[(j*set_x+i)%10];
 							}
-							ind++;
 						}
 
 					}
@@ -1949,8 +1938,6 @@ void CLookUpTable::TableLoadCFX(char* filename){
 					Cp_limits[1] = 0;//upper limit
 
 					su2double inp[10];
-					ind = 0;
-
 
 					for (int j =0; j<set_y; j++)
 					{
@@ -1962,23 +1949,21 @@ void CLookUpTable::TableLoadCFX(char* filename){
 								cout<<line<<endl;
 								istringstream in(line);
 								var_steps = 10;
-								ind = 0;
 								if (((set_x*set_y) - (j*set_x+i))<10) var_steps = ((set_x*set_y) - (j*set_x+i));
 								for (int z = 0; z<var_steps; z++)
 								{
 									in>>inp[z];
 								}
 							}
-							ThermoTables[i][j].Cp = inp[ind];
-							if (inp[ind]>Cp_limits[1])
+							ThermoTables[i][j].Cp = inp[(j*set_x+i)%10];
+							if (inp[(j*set_x+i)%10]>Cp_limits[1])
 							{
-								Cp_limits[1]= inp[ind];
+								Cp_limits[1]= inp[(j*set_x+i)%10];
 							}
-							if (inp[ind]<Cp_limits[0])
+							if (inp[(j*set_x+i)%10]<Cp_limits[0])
 							{
-								Cp_limits[0]=inp[ind];
+								Cp_limits[0]=inp[(j*set_x+i)%10];
 							}
-							ind++;
 						}
 
 					}
@@ -1993,8 +1978,6 @@ void CLookUpTable::TableLoadCFX(char* filename){
 					Entropy_limits[1] = 0;//upper limit
 
 					su2double inp[10];
-					ind = 0;
-
 
 					for (int j =0; j<set_y; j++)
 					{
@@ -2010,16 +1993,15 @@ void CLookUpTable::TableLoadCFX(char* filename){
 									in>>inp[z];
 								}
 							}
-							ThermoTables[i][j].Entropy = inp[ind];
-							if (inp[ind]>Entropy_limits[1])
+							ThermoTables[i][j].Entropy = inp[(j*set_x+i)%10];
+							if (inp[(j*set_x+i)%10]>Entropy_limits[1])
 							{
-								Entropy_limits[1]= inp[ind];
+								Entropy_limits[1]= inp[(j*set_x+i)%10];
 							}
-							if (inp[ind]<Entropy_limits[0])
+							if (inp[(j*set_x+i)%10]<Entropy_limits[0])
 							{
-								Entropy_limits[0]=inp[ind];
+								Entropy_limits[0]=inp[(j*set_x+i)%10];
 							}
-							ind++;
 						}
 
 					}
@@ -2035,8 +2017,6 @@ void CLookUpTable::TableLoadCFX(char* filename){
 					Mu_limits[1] = 0;//upper limit
 
 					su2double inp[10];
-					ind = 0;
-
 
 					for (int j =0; j<set_y; j++)
 					{
@@ -2048,23 +2028,21 @@ void CLookUpTable::TableLoadCFX(char* filename){
 								cout<<line<<endl;
 								istringstream in(line);
 								var_steps = 10;
-								ind = 0;
 								if (((set_x*set_y) - (j*set_x+i))<10) var_steps = ((set_x*set_y) - (j*set_x+i));
 								for (int z = 0; z<var_steps; z++)
 								{
 									in>>inp[z];
 								}
 							}
-							ThermoTables[i][j].Mu = inp[ind];
-							if (inp[ind]>Mu_limits[1])
+							ThermoTables[i][j].Mu = inp[(j*set_x+i)%10];
+							if (inp[(j*set_x+i)%10]>Mu_limits[1])
 							{
-								Mu_limits[1]= inp[ind];
+								Mu_limits[1]= inp[(j*set_x+i)%10];
 							}
-							if (inp[ind]<Mu_limits[0])
+							if (inp[(j*set_x+i)%10]<Mu_limits[0])
 							{
-								Mu_limits[0]=inp[ind];
+								Mu_limits[0]=inp[(j*set_x+i)%10];
 							}
-							ind++;
 						}
 
 					}
@@ -2080,8 +2058,6 @@ void CLookUpTable::TableLoadCFX(char* filename){
 					Kt_limits[1] = 0;//upper limit
 
 					su2double inp[10];
-					ind = 0;
-
 
 					for (int j =0; j<set_y; j++)
 					{
@@ -2093,23 +2069,21 @@ void CLookUpTable::TableLoadCFX(char* filename){
 								cout<<line<<endl;
 								istringstream in(line);
 								var_steps = 10;
-								ind = 0;
 								if (((set_x*set_y) - (j*set_x+i))<10) var_steps = ((set_x*set_y) - (j*set_x+i));
 								for (int z = 0; z<var_steps; z++)
 								{
 									in>>inp[z];
 								}
 							}
-							ThermoTables[i][j].Kt = inp[ind];
-							if (inp[ind]>Kt_limits[1])
+							ThermoTables[i][j].Kt = inp[(j*set_x+i)%10];
+							if (inp[(j*set_x+i)%10]>Kt_limits[1])
 							{
-								Kt_limits[1]= inp[ind];
+								Kt_limits[1]= inp[(j*set_x+i)%10];
 							}
-							if (inp[ind]<Kt_limits[0])
+							if (inp[(j*set_x+i)%10]<Kt_limits[0])
 							{
-								Kt_limits[0]=inp[ind];
+								Kt_limits[0]=inp[(j*set_x+i)%10];
 							}
-							ind++;
 						}
 
 					}
@@ -2126,8 +2100,6 @@ void CLookUpTable::TableLoadCFX(char* filename){
 					dPdrho_e_limits[1] = 0;//upper limit
 
 					su2double inp[10];
-					ind = 0;
-
 
 					for (int j =0; j<set_y; j++)
 					{
@@ -2139,23 +2111,21 @@ void CLookUpTable::TableLoadCFX(char* filename){
 								cout<<line<<endl;
 								istringstream in(line);
 								var_steps = 10;
-								ind = 0;
 								if (((set_x*set_y) - (j*set_x+i))<10) var_steps = ((set_x*set_y) - (j*set_x+i));
 								for (int z = 0; z<var_steps; z++)
 								{
 									in>>inp[z];
 								}
 							}
-							ThermoTables[i][j].dPdrho_e = inp[ind];
-							if (inp[ind]>dPdrho_e_limits[1])
+							ThermoTables[i][j].dPdrho_e = inp[(j*set_x+i)%10];
+							if (inp[(j*set_x+i)%10]>dPdrho_e_limits[1])
 							{
-								dPdrho_e_limits[1]= inp[ind];
+								dPdrho_e_limits[1]= inp[(j*set_x+i)%10];
 							}
-							if (inp[ind]<dPdrho_e_limits[0])
+							if (inp[(j*set_x+i)%10]<dPdrho_e_limits[0])
 							{
-								dPdrho_e_limits[0]=inp[ind];
+								dPdrho_e_limits[0]=inp[(j*set_x+i)%10];
 							}
-							ind++;
 						}
 
 					}
@@ -2172,7 +2142,6 @@ void CLookUpTable::TableLoadCFX(char* filename){
 					dPde_rho_limits[1] = 0;//upper limit
 
 					su2double inp[10];
-					ind = 0;
 
 					for (int j =0; j<set_y; j++)
 					{
@@ -2184,23 +2153,21 @@ void CLookUpTable::TableLoadCFX(char* filename){
 								cout<<line<<endl;
 								istringstream in(line);
 								var_steps = 10;
-								ind = 0;
 								if (((set_x*set_y) - (j*set_x+i))<10) var_steps = ((set_x*set_y) - (j*set_x+i));
 								for (int z = 0; z<var_steps; z++)
 								{
 									in>>inp[z];
 								}
 							}
-							ThermoTables[i][j].dPde_rho = inp[ind];
-							if (inp[ind]>dPde_rho_limits[1])
+							ThermoTables[i][j].dPde_rho = inp[(j*set_x+i)%10];
+							if (inp[(j*set_x+i)%10]>dPde_rho_limits[1])
 							{
-								dPde_rho_limits[1]= inp[ind];
+								dPde_rho_limits[1]= inp[(j*set_x+i)%10];
 							}
-							if (inp[ind]<dPde_rho_limits[0])
+							if (inp[(j*set_x+i)%10]<dPde_rho_limits[0])
 							{
-								dPde_rho_limits[0]=inp[ind];
+								dPde_rho_limits[0]=inp[(j*set_x+i)%10];
 							}
-							ind++;
 						}
 
 					}
@@ -2215,7 +2182,6 @@ void CLookUpTable::TableLoadCFX(char* filename){
 					dTdrho_e_limits[1] = 0;//upper limit
 
 					su2double inp[10];
-					ind = 0;
 
 					for (int j =0; j<set_y; j++)
 					{
@@ -2227,23 +2193,21 @@ void CLookUpTable::TableLoadCFX(char* filename){
 								cout<<line<<endl;
 								istringstream in(line);
 								var_steps = 10;
-								ind = 0;
 								if (((set_x*set_y) - (j*set_x+i))<10) var_steps = ((set_x*set_y) - (j*set_x+i));
 								for (int z = 0; z<var_steps; z++)
 								{
 									in>>inp[z];
 								}
 							}
-							ThermoTables[i][j].dTdrho_e = inp[ind];
-							if (inp[ind]>dTdrho_e_limits[1])
+							ThermoTables[i][j].dTdrho_e = inp[(j*set_x+i)%10];
+							if (inp[(j*set_x+i)%10]>dTdrho_e_limits[1])
 							{
-								dTdrho_e_limits[1]= inp[ind];
+								dTdrho_e_limits[1]= inp[(j*set_x+i)%10];
 							}
-							if (inp[ind]<dTdrho_e_limits[0])
+							if (inp[(j*set_x+i)%10]<dTdrho_e_limits[0])
 							{
-								dTdrho_e_limits[0]=inp[ind];
+								dTdrho_e_limits[0]=inp[(j*set_x+i)%10];
 							}
-							ind++;
 						}
 
 					}
@@ -2259,7 +2223,6 @@ void CLookUpTable::TableLoadCFX(char* filename){
 					dTde_rho_limits[1] = 0;//upper limit
 
 					su2double inp[10];
-					ind = 0;
 
 					for (int j =0; j<set_y; j++)
 					{
@@ -2271,23 +2234,21 @@ void CLookUpTable::TableLoadCFX(char* filename){
 								cout<<line<<endl;
 								istringstream in(line);
 								var_steps = 10;
-								ind = 0;
 								if (((set_x*set_y) - (j*set_x+i))<10) var_steps = ((set_x*set_y) - (j*set_x+i));
 								for (int z = 0; z<var_steps; z++)
 								{
 									in>>inp[z];
 								}
 							}
-							ThermoTables[i][j].dTde_rho = inp[ind];
-							if (inp[ind]>dTde_rho_limits[1])
+							ThermoTables[i][j].dTde_rho = inp[(j*set_x+i)%10];
+							if (inp[(j*set_x+i)%10]>dTde_rho_limits[1])
 							{
-								dTde_rho_limits[1]= inp[ind];
+								dTde_rho_limits[1]= inp[(j*set_x+i)%10];
 							}
-							if (inp[ind]<dTde_rho_limits[0])
+							if (inp[(j*set_x+i)%10]<dTde_rho_limits[0])
 							{
-								dTde_rho_limits[0]=inp[ind];
+								dTde_rho_limits[0]=inp[(j*set_x+i)%10];
 							}
-							ind++;
 						}
 
 					}
@@ -2303,7 +2264,6 @@ void CLookUpTable::TableLoadCFX(char* filename){
 					Temperature_limits[1] = 0;//upper limit
 
 					su2double inp[10];
-					ind = 0;
 
 					for (int j =0; j<set_y; j++)
 					{
@@ -2315,23 +2275,21 @@ void CLookUpTable::TableLoadCFX(char* filename){
 								cout<<line<<endl;
 								istringstream in(line);
 								var_steps = 10;
-								ind = 0;
 								if (((set_x*set_y) - (j*set_x+i))<10) var_steps = ((set_x*set_y) - (j*set_x+i));
 								for (int z = 0; z<var_steps; z++)
 								{
 									in>>inp[z];
 								}
 							}
-							ThermoTables[i][j].Temperature = inp[ind];
-							if (inp[ind]>Temperature_limits[1])
+							ThermoTables[i][j].Temperature = inp[(j*set_x+i)%10];
+							if (inp[(j*set_x+i)%10]>Temperature_limits[1])
 							{
-								Temperature_limits[1]= inp[ind];
+								Temperature_limits[1]= inp[(j*set_x+i)%10];
 							}
-							if (inp[ind]<Temperature_limits[0])
+							if (inp[(j*set_x+i)%10]<Temperature_limits[0])
 							{
-								Temperature_limits[0]=inp[ind];
+								Temperature_limits[0]=inp[(j*set_x+i)%10];
 							}
-							ind++;
 						}
 
 					}
