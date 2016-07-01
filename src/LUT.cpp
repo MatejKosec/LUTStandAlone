@@ -337,31 +337,37 @@ void CLookUpTable::SetTDState_rhoe(su2double rho, su2double e) {
 	cout << "e desired   : " << e << endl;
 
 	su2double RunVal;
-	unsigned int CFL = 2;
 	unsigned int LowerI;
 	unsigned int UpperI;
 	unsigned int LowerJ;
 	unsigned int UpperJ;
-	//Restart search from previously used index if it exists, else go to middle
-	//		if (jIndex<0) LowerJ = 0;
-	//		if (jIndex>=0) LowerJ = jIndex;
-	//		if (jIndex<ceil(p_dim/2))
-	//		{
-	//			UpperJ = ceil(p_dim/2);
-	//		}
-	//		else UpperJ=p_dim-1;
+
 	UpperJ = p_dim - 1;
 	LowerJ = 0;
-
-	//Determine the I index: rho is equispaced (no restart)
-	LowerI = floor(
-			(rho - Density_limits[0]) / (Density_limits[1] - Density_limits[0])
-			* (rho_dim - 1));
-	UpperI = LowerI + 1;
-
 	su2double grad, x00, y00, y10, x10;
 
-	while (UpperJ - LowerJ > 1) {
+	//Determine the I index: rho is not equispaced
+	UpperI = rho_dim -1;
+	LowerI = 0;
+	while (UpperI - LowerI > 1)
+	{
+		//Check current value
+		x00 = ThermoTables[LowerI][LowerJ].Density;
+		if (x00 < rho) {
+			LowerI = LowerI + ceil((UpperI - LowerI) / 2);
+		} else if (x00 > rho) {
+			UpperI = LowerI;
+			LowerI = LowerI / 2;
+		}
+		if (x00 == rho) {
+			UpperI = LowerI + 1;
+			break;
+		}
+		cout << LowerJ << "  " << UpperJ << endl;
+	}
+
+	while (UpperJ - LowerJ > 1)
+	{
 		//Check current value
 		y00 = ThermoTables[LowerI][LowerJ].StaticEnergy;
 		y10 = ThermoTables[UpperI][LowerJ].StaticEnergy;
@@ -371,15 +377,19 @@ void CLookUpTable::SetTDState_rhoe(su2double rho, su2double e) {
 		//also applied to all other searches.
 		RunVal = y00 + (y10 - y00) / (x10 - x00) * (rho - x00);
 		grad = ThermoTables[LowerI][UpperJ].StaticEnergy - y00;
-		if (grad * RunVal <= grad * e) {
-			LowerJ = LowerJ + ceil((UpperJ - LowerJ) / CFL);
-		} else if (grad * RunVal > grad * e) {
+		if ( RunVal <  e) {
+			LowerJ = LowerJ + ceil((UpperJ - LowerJ) / 2);
+		} else if (RunVal > e) {
 			UpperJ = LowerJ;
-			LowerJ = LowerJ / CFL;
+			LowerJ = LowerJ / 2;
 		}
-		cout << "Here" << endl;
+		if (RunVal == e) {
+			UpperJ = LowerJ + 1;
+			break;
+		}
 		cout << LowerJ << "  " << UpperJ << endl;
 	}
+
 
 	iIndex = LowerI;
 	jIndex = LowerJ;
@@ -468,17 +478,34 @@ void CLookUpTable::SetTDState_PT(su2double P, su2double T) {
 	//			UpperI = ceil(rho_dim/2); //probably can be made more efficient (smaller square)
 	//		}
 	//		else UpperI = rho_dim-1;
+
 	LowerI = 0;
 	UpperI = rho_dim - 1;
+	su2double grad, x00, y00, y01, x01;
 
-	//Determine the J index: P is equispaced (no restart)
-	LowerJ = floor(
-			(P - Pressure_limits[0]) / (Pressure_limits[1] - Pressure_limits[0])
-			* (p_dim - 1));
-	UpperJ = LowerJ + 1;
+	//Determine the J index: P is not equispaced
+	LowerJ = 0;
+	UpperJ = p_dim-1;
+	while (UpperJ - LowerJ > 1)
+	{
+		//Check current value
+		y00 = ThermoTables[LowerI][LowerJ].Pressure;
+		if (y00 < P) {
+			LowerJ = LowerJ + ceil((UpperJ - LowerJ) / 2);
+		} else if (y00 > P) {
+			UpperJ = LowerJ;
+			LowerJ = LowerJ / 2;
+		}
+		if (y00 == P) {
+			UpperJ = LowerJ + 1;
+			break;
+		}
+		cout << LowerJ << "  " << UpperJ << endl;
+	}
+
 
 	//Determine the I index (for T)
-	su2double grad, x00, y00, y01, x01;
+
 	while (UpperI - LowerI > 1) {
 		y00 = ThermoTables[LowerI][LowerJ].Pressure;
 		y01 = ThermoTables[LowerI][UpperJ].Pressure;
@@ -577,18 +604,49 @@ void CLookUpTable::SetTDState_Prho(su2double P, su2double rho) {
 	unsigned int UpperI;
 	unsigned int LowerJ;
 	unsigned int UpperJ;
+	su2double x00,y00;
+	UpperI = rho_dim -1;
+	LowerI = 0;
+	LowerJ = 0;
+	UpperJ = p_dim-1;
 
-	//Determine the I index: RHO is equispaced
-	LowerI = floor(
-			(rho - Density_limits[0]) / (Density_limits[1] - Density_limits[0])
-			* (rho_dim - 1));
-	UpperI = LowerI + 1;
+	//Determine the J index: P is not equispaced
+	while (UpperJ - LowerJ > 1)
+	{
+		//Check current value
+		y00 = ThermoTables[LowerI][LowerJ].Pressure;
+		if (y00 < P) {
+			LowerJ = LowerJ + ceil((UpperJ - LowerJ) / 2);
+		} else if (y00 > P) {
+			UpperJ = LowerJ;
+			LowerJ = LowerJ / 2;
+		}
+		if (y00 == P) {
+			UpperJ = LowerJ + 1;
+			break;
+		}
+		cout << LowerJ << "  " << UpperJ << endl;
+	}
 
-	//Determine the J index: P is equispaced (no restart)
-	LowerJ = floor(
-			(P - Pressure_limits[0]) / (Pressure_limits[1] - Pressure_limits[0])
-			* (p_dim - 1));
-	UpperJ = LowerJ + 1;
+
+	while (UpperI - LowerI > 1)
+	{
+		//Check current value
+		x00 = ThermoTables[LowerI][LowerJ].Density;
+		if (x00 < rho) {
+			LowerI = LowerI + ceil((UpperI - LowerI) / 2);
+		} else if (x00 > rho) {
+			UpperI = LowerI;
+			LowerI = LowerI / 2;
+		}
+		if (x00 == rho) {
+			UpperI = LowerI + 1;
+			break;
+		}
+		cout << LowerJ << "  " << UpperJ << endl;
+	}
+
+
 	cout << "i " << LowerI << "  " << UpperI << endl;
 	cout << "j " << LowerJ << "  " << UpperJ << endl;
 
@@ -769,18 +827,30 @@ void CLookUpTable::SetTDState_Ps(su2double P, su2double s) {
 	//			UpperI = ceil(rho_dim/2); //probably can be made more efficient (smaller square)
 	//		}
 	//		else UpperI = rho_dim-1;
+	su2double grad, x00, y00, y01, x01;
 	LowerI = 0;
 	UpperI = rho_dim - 1;
-	cout << LowerI << "  " << UpperI << endl;
-
-	//Determine the I index: RHO is equispaced (no restart)
-	LowerJ = floor(
-			(P - Pressure_limits[0]) / (Pressure_limits[1] - Pressure_limits[0])
-			* (p_dim - 1));
-	UpperJ = LowerJ + 1;
+	LowerJ = 0;
+	UpperJ = p_dim-1;
+	//Determine the J index: P is not equispaced
+	while (UpperJ - LowerJ > 1)
+	{
+		//Check current value
+		y00 = ThermoTables[LowerI][LowerJ].Pressure;
+		if (y00 < P) {
+			LowerJ = LowerJ + ceil((UpperJ - LowerJ) / 2);
+		} else if (y00 > P) {
+			UpperJ = LowerJ;
+			LowerJ = LowerJ / 2;
+		}
+		if (y00 == P) {
+			UpperJ = LowerJ + 1;
+			break;
+		}
+		cout << LowerJ << "  " << UpperJ << endl;
+	}
 
 	//Determine the J index (for s)
-	su2double grad, x00, y00, y01, x01;
 	while (UpperI - LowerI > 1) {
 		y00 = ThermoTables[LowerI][LowerJ].Pressure;
 		y01 = ThermoTables[LowerI][UpperJ].Pressure;
@@ -881,18 +951,30 @@ void CLookUpTable::SetTDState_rhoT(su2double rho, su2double T) {
 	unsigned int UpperI;
 	unsigned int LowerJ;
 	unsigned int UpperJ;
+	su2double grad, x00, y00, y10, x10;
+	LowerI = 0;
+	UpperI = rho_dim - 1;
 	LowerJ = 0;
-	UpperJ = p_dim - 1;
-
+	UpperJ = p_dim-1;
 	//Determine the I index: RHO is equispaced (no restart)
-	LowerI = floor(
-			(rho - Density_limits[0]) / (Density_limits[1] - Density_limits[0])
-			* (rho_dim - 1));
-	UpperI = LowerI + 1;
+	while (UpperI - LowerI > 1)
+		{
+			//Check current value
+			x00 = ThermoTables[LowerI][LowerJ].Density;
+			if (x00 < rho) {
+				LowerI = LowerI + ceil((UpperI - LowerI) / 2);
+			} else if (x00 > rho) {
+				UpperI = LowerI;
+				LowerI = LowerI / 2;
+			}
+			if (x00 == rho) {
+				UpperI = LowerI + 1;
+				break;
+			}
+			cout << LowerJ << "  " << UpperJ << endl;
+		}
 
 	//Determine the I index (for T)
-	su2double grad, x00, y00, y10, x10;
-
 	while (UpperJ - LowerJ > 1) {
 		//Check current value
 		y00 = ThermoTables[LowerI][LowerJ].Temperature;
@@ -973,8 +1055,8 @@ void CLookUpTable::SetTDState_rhoT(su2double rho, su2double T) {
 		cerr << "RHOT Interpolated Pressure out of bounds\n";
 	}
 }
-void CLookUpTable::InverseBlock(unsigned short nVar_mat, su2double *block, su2double *invBlock)
-{
+void CLookUpTable::InverseBlock(unsigned short nVar_mat, su2double *block,
+		su2double *invBlock) {
 
 	unsigned short i, j, k;
 	unsigned short temp;
@@ -982,93 +1064,80 @@ void CLookUpTable::InverseBlock(unsigned short nVar_mat, su2double *block, su2do
 	su2double **augmentedmatrix = new su2double*[nVar_mat];
 
 	for (i = 0; i < nVar_mat; i++) {
-		augmentedmatrix[i] = new su2double[2*nVar_mat];
+		augmentedmatrix[i] = new su2double[2 * nVar_mat];
 	}
 
-	for(i=0; i<nVar_mat; i++)
-		for(j=0; j<nVar_mat; j++)
-			augmentedmatrix[i][j] = block[i*nVar_mat+j] ;
+	for (i = 0; i < nVar_mat; i++)
+		for (j = 0; j < nVar_mat; j++)
+			augmentedmatrix[i][j] = block[i * nVar_mat + j];
 
 	/* augmenting with identity matrix of similar dimensions */
 
-	for(i=0;i<nVar_mat; i++)
-		for(j=nVar_mat; j<2*nVar_mat; j++)
-			if(i==j%nVar_mat)
-				augmentedmatrix[i][j]=1;
+	for (i = 0; i < nVar_mat; i++)
+		for (j = nVar_mat; j < 2 * nVar_mat; j++)
+			if (i == j % nVar_mat)
+				augmentedmatrix[i][j] = 1;
 			else
-				augmentedmatrix[i][j]=0;
+				augmentedmatrix[i][j] = 0;
 
 	/* using gauss-jordan elimination */
 
-	for(j=0; j<nVar_mat; j++)
-	{
-		temp=j;
+	for (j = 0; j < nVar_mat; j++) {
+		temp = j;
 
 		/* swapping row if a[j][j]=0 with first non-zero row below jth row */
 
-		if (augmentedmatrix[j][j]==0)
-		{
+		if (augmentedmatrix[j][j] == 0) {
 			/* Finding first non-zero row */
-			for(i=j+1; i<nVar_mat; i++)
-				if(augmentedmatrix[i][j]!=0)
-				{
-					temp=i;
+			for (i = j + 1; i < nVar_mat; i++)
+				if (augmentedmatrix[i][j] != 0) {
+					temp = i;
 					break;
 				}
 
 			/* Swapping current row with temp row */
-			for(k=0; k<2*nVar_mat; k++)
-			{
-				temporary=augmentedmatrix[j][k] ;
-				augmentedmatrix[j][k]=augmentedmatrix[temp][k] ;
-				augmentedmatrix[temp][k]=temporary ;
+			for (k = 0; k < 2 * nVar_mat; k++) {
+				temporary = augmentedmatrix[j][k];
+				augmentedmatrix[j][k] = augmentedmatrix[temp][k];
+				augmentedmatrix[temp][k] = temporary;
 			}
 		}
 
-
-
 		/* performing row operations to form required identity matrix out of the input matrix */
 
-		for(i=0; i<nVar_mat; i++)
-			if(i!=j)
-			{
-				r=augmentedmatrix[i][j];
-				for(k=0; k<2*nVar_mat; k++)
-				{
-					if (augmentedmatrix[j][j]!=0) {
-						augmentedmatrix[i][k]-=(augmentedmatrix[j][k]/augmentedmatrix[j][j])*r ;
+		for (i = 0; i < nVar_mat; i++)
+			if (i != j) {
+				r = augmentedmatrix[i][j];
+				for (k = 0; k < 2 * nVar_mat; k++) {
+					if (augmentedmatrix[j][j] != 0) {
+						augmentedmatrix[i][k] -= (augmentedmatrix[j][k]
+																												 / augmentedmatrix[j][j]) * r;
 
 					}
 				}
-			}
-			else
-			{
-				r=augmentedmatrix[i][j];
-				if (r!=0) {
-					for(k=0; k<2*nVar_mat; k++)
-						augmentedmatrix[i][k]/=r ;
+			} else {
+				r = augmentedmatrix[i][j];
+				if (r != 0) {
+					for (k = 0; k < 2 * nVar_mat; k++)
+						augmentedmatrix[i][k] /= r;
 				}
-
 
 			}
 
 	}
 
-	for(i=0; i<nVar_mat; i++)
-	{
-		for(j=nVar_mat; j<2*nVar_mat; j++)
-			invBlock[i*nVar_mat+j-nVar_mat] = augmentedmatrix[i][j];
+	for (i = 0; i < nVar_mat; i++) {
+		for (j = nVar_mat; j < 2 * nVar_mat; j++)
+			invBlock[i * nVar_mat + j - nVar_mat] = augmentedmatrix[i][j];
 	}
 
 	/*--- delete dynamic memory for augmented matrix ---*/
 	for (k = 0; k < nVar_mat; k++) {
-		delete [] augmentedmatrix[k];
+		delete[] augmentedmatrix[k];
 	}
-	delete [] augmentedmatrix;
+	delete[] augmentedmatrix;
 
 }
-
-
 
 void CLookUpTable::Interp2D_ArbitrarySkewCoeff(su2double x, su2double y,
 		std::string grid_var) {
@@ -1150,9 +1219,9 @@ void CLookUpTable::Interp2D_ArbitrarySkewCoeff(su2double x, su2double y,
 	if (BOTTOM and !TOP) {
 		//added table limit detection
 		if (jIndex == 0) {
-			cerr << grid_var + " interpolation point lies below the LUT\n";
+			cout << grid_var + " interpolation point lies below the LUT\n";
 		} else {
-			cerr
+			cout
 			<< grid_var
 			+ " interpolation point lies below bottom boundary of selected quad\n";
 		}
@@ -1161,9 +1230,9 @@ void CLookUpTable::Interp2D_ArbitrarySkewCoeff(su2double x, su2double y,
 	if (RIGHT and !LEFT) {
 		//added table limit detection
 		if (iIndex == (rho_dim - 1)) {
-			cerr << grid_var + " interpolation point lies right of the LUT\n";
+			cout << grid_var + " interpolation point lies right of the LUT\n";
 		} else {
-			cerr
+			cout
 			<< grid_var
 			+ " interpolation point lies to the right of the boundary of selected quad\n";
 		}
@@ -1172,9 +1241,9 @@ void CLookUpTable::Interp2D_ArbitrarySkewCoeff(su2double x, su2double y,
 	if (TOP and !BOTTOM) {
 		//added table limit detection
 		if (jIndex == p_dim - 1) {
-			cerr << grid_var + " interpolation point lies above the LUT\n";
+			cout << grid_var + " interpolation point lies above the LUT\n";
 		} else {
-			cerr
+			cout
 			<< grid_var
 			+ " interpolation point lies above the boundary of selected quad\n";
 		}
@@ -1184,9 +1253,9 @@ void CLookUpTable::Interp2D_ArbitrarySkewCoeff(su2double x, su2double y,
 	if (LEFT and !RIGHT) {
 		//added table limit detection
 		if (iIndex == 0) {
-			cerr << grid_var + " interpolation point lies left of the LUT\n";
+			cout << grid_var + " interpolation point lies left of the LUT\n";
 		} else {
-			cerr
+			cout
 			<< grid_var
 			+ " interpolation point lies to the left of the boundary of selected quad\n";
 		}
@@ -1222,17 +1291,16 @@ void CLookUpTable::Interp2D_ArbitrarySkewCoeff(su2double x, su2double y,
 	//				coeff[i][j]=temp_coeff[3*i+j];
 	//			}
 	//		}
-	if ((dx01 == 0) and (dy10 == 0))
-	{
-		coeff[0][0]= 1.0/dx10;
-		coeff[0][1]= 0;
-		coeff[0][2]= 0;
-		coeff[1][0]= 0;
-		coeff[1][1]= 1.0/dy01;
-		coeff[1][2]= 0;
-		coeff[2][0]= -1/(dx10*dy11);
-		coeff[2][1]= -1/(dx11*dy01);
-		coeff[2][2]= 1/(dx11*dy11);
+	if ((dx01 == 0) and (dy10 == 0)) {
+		coeff[0][0] = 1.0 / dx10;
+		coeff[0][1] = 0;
+		coeff[0][2] = 0;
+		coeff[1][0] = 0;
+		coeff[1][1] = 1.0 / dy01;
+		coeff[1][2] = 0;
+		coeff[2][0] = -1 / (dx10 * dy11);
+		coeff[2][1] = -1 / (dx11 * dy01);
+		coeff[2][2] = 1 / (dx11 * dy11);
 	}
 
 	else if (dx01 == 0) {
@@ -1240,34 +1308,34 @@ void CLookUpTable::Interp2D_ArbitrarySkewCoeff(su2double x, su2double y,
 				/ (pow(dx10, 2) * dx11 * dy10 + dx10 * dx11 * dy01 * dy11
 						+ dx10 * dx11 * dy10 * (-dx10 - dy01));
 		coeff[0][1] = (dx10 * dy10 * dy11 - dx11 * dy10 * dy11)
-										/ (pow(dx10, 2) * dx11 * dy10 + dx10 * dx11 * dy01 * dy11
-												+ dx10 * dx11 * dy10 * (-dx10 - dy01));
+						/ (pow(dx10, 2) * dx11 * dy10 + dx10 * dx11 * dy01 * dy11
+								+ dx10 * dx11 * dy10 * (-dx10 - dy01));
 		coeff[0][2] = -dx10 * dy01 * dy10
 				/ (pow(dx10, 2) * dx11 * dy10 + dx10 * dx11 * dy01 * dy11
 						+ dx10 * dx11 * dy10 * (-dx10 - dy01));
 		coeff[1][0] = 0;
 		coeff[1][1] = (-dx10 * dx11 * dy10 + dx10 * dx11 * dy11)
-										/ (pow(dx10, 2) * dx11 * dy10 + dx10 * dx11 * dy01 * dy11
-												+ dx10 * dx11 * dy10 * (-dx10 - dy01));
+						/ (pow(dx10, 2) * dx11 * dy10 + dx10 * dx11 * dy01 * dy11
+								+ dx10 * dx11 * dy10 * (-dx10 - dy01));
 		coeff[1][2] = 0;
 		coeff[2][0] = -dx11 * dy01
 				/ (pow(dx10, 2) * dx11 * dy10 + dx10 * dx11 * dy01 * dy11
 						+ dx10 * dx11 * dy10 * (-dx10 - dy01));
 		coeff[2][1] = (-dx10 * dy11 + dx11 * dy10)
-										/ (pow(dx10, 2) * dx11 * dy10 + dx10 * dx11 * dy01 * dy11
-												+ dx10 * dx11 * dy10 * (-dx10 - dy01));
+						/ (pow(dx10, 2) * dx11 * dy10 + dx10 * dx11 * dy01 * dy11
+								+ dx10 * dx11 * dy10 * (-dx10 - dy01));
 		coeff[2][2] = dx10 * dy01
 				/ (pow(dx10, 2) * dx11 * dy10 + dx10 * dx11 * dy01 * dy11
 						+ dx10 * dx11 * dy10 * (-dx10 - dy01));
 	} else if (dy10 == 0) {
 		coeff[0][0] = (-dx01 * dy01 * dy11 + dx11 * dy01 * dy11)
-										/ (dx01 * pow(dy01, 2) * dy11 + dx01 * dy01 * dy11 * (-dx10 - dy01)
-												+ dx10 * dx11 * dy01 * dy11);
+						/ (dx01 * pow(dy01, 2) * dy11 + dx01 * dy01 * dy11 * (-dx10 - dy01)
+								+ dx10 * dx11 * dy01 * dy11);
 		coeff[0][1] = 0;
 		coeff[0][2] = 0;
 		coeff[1][0] = (dx01 * dx11 * dy01 - dx01 * dx11 * dy11)
-										/ (dx01 * pow(dy01, 2) * dy11 + dx01 * dy01 * dy11 * (-dx10 - dy01)
-												+ dx10 * dx11 * dy01 * dy11);
+						/ (dx01 * pow(dy01, 2) * dy11 + dx01 * dy01 * dy11 * (-dx10 - dy01)
+								+ dx10 * dx11 * dy01 * dy11);
 		coeff[1][1] = dx10 * dx11 * dy11
 				/ (dx01 * pow(dy01, 2) * dy11 + dx01 * dy01 * dy11 * (-dx10 - dy01)
 						+ dx10 * dx11 * dy01 * dy11);
@@ -1275,8 +1343,8 @@ void CLookUpTable::Interp2D_ArbitrarySkewCoeff(su2double x, su2double y,
 				/ (dx01 * pow(dy01, 2) * dy11 + dx01 * dy01 * dy11 * (-dx10 - dy01)
 						+ dx10 * dx11 * dy01 * dy11);
 		coeff[2][0] = (dx01 * dy11 - dx11 * dy01)
-										/ (dx01 * pow(dy01, 2) * dy11 + dx01 * dy01 * dy11 * (-dx10 - dy01)
-												+ dx10 * dx11 * dy01 * dy11);
+						/ (dx01 * pow(dy01, 2) * dy11 + dx01 * dy01 * dy11 * (-dx10 - dy01)
+								+ dx10 * dx11 * dy01 * dy11);
 		coeff[2][1] = -dx10 * dy11
 				/ (dx01 * pow(dy01, 2) * dy11 + dx01 * dy01 * dy11 * (-dx10 - dy01)
 						+ dx10 * dx11 * dy01 * dy11);
@@ -1286,50 +1354,50 @@ void CLookUpTable::Interp2D_ArbitrarySkewCoeff(su2double x, su2double y,
 
 	} else {
 		coeff[0][0] = (-dx01 * dy01 * dy11 + dx11 * dy01 * dy11)
-										/ (dx11 * dy11 * (-dx01 * dy10 + dx10 * dy01)
-												+ dx11 * (dx01 * dy01 * dy10 + pow(dx10, 2) * dy10)
-												+ dy11 * (dx01 * dx10 * dy10 + dx01 * pow(dy01, 2))
-												- (-dx10 - dy01) * (-dx01 * dy01 * dy11 - dx10 * dx11 * dy10));
+						/ (dx11 * dy11 * (-dx01 * dy10 + dx10 * dy01)
+								+ dx11 * (dx01 * dy01 * dy10 + pow(dx10, 2) * dy10)
+								+ dy11 * (dx01 * dx10 * dy10 + dx01 * pow(dy01, 2))
+								- (-dx10 - dy01) * (-dx01 * dy01 * dy11 - dx10 * dx11 * dy10));
 		coeff[0][1] = (dx10 * dy10 * dy11 - dx11 * dy10 * dy11)
-										/ (dx11 * dy11 * (-dx01 * dy10 + dx10 * dy01)
-												+ dx11 * (dx01 * dy01 * dy10 + pow(dx10, 2) * dy10)
-												+ dy11 * (dx01 * dx10 * dy10 + dx01 * pow(dy01, 2))
-												- (-dx10 - dy01) * (-dx01 * dy01 * dy11 - dx10 * dx11 * dy10));
+						/ (dx11 * dy11 * (-dx01 * dy10 + dx10 * dy01)
+								+ dx11 * (dx01 * dy01 * dy10 + pow(dx10, 2) * dy10)
+								+ dy11 * (dx01 * dx10 * dy10 + dx01 * pow(dy01, 2))
+								- (-dx10 - dy01) * (-dx01 * dy01 * dy11 - dx10 * dx11 * dy10));
 		coeff[0][2] = (dx01 * dy01 * dy10 - dx10 * dy01 * dy10)
-										/ (dx11 * dy11 * (-dx01 * dy10 + dx10 * dy01)
-												+ dx11 * (dx01 * dy01 * dy10 + pow(dx10, 2) * dy10)
-												+ dy11 * (dx01 * dx10 * dy10 + dx01 * pow(dy01, 2))
-												- (-dx10 - dy01) * (-dx01 * dy01 * dy11 - dx10 * dx11 * dy10));
+						/ (dx11 * dy11 * (-dx01 * dy10 + dx10 * dy01)
+								+ dx11 * (dx01 * dy01 * dy10 + pow(dx10, 2) * dy10)
+								+ dy11 * (dx01 * dx10 * dy10 + dx01 * pow(dy01, 2))
+								- (-dx10 - dy01) * (-dx01 * dy01 * dy11 - dx10 * dx11 * dy10));
 		coeff[1][0] = (dx01 * dx11 * dy01 - dx01 * dx11 * dy11)
-										/ (dx11 * dy11 * (-dx01 * dy10 + dx10 * dy01)
-												+ dx11 * (dx01 * dy01 * dy10 + pow(dx10, 2) * dy10)
-												+ dy11 * (dx01 * dx10 * dy10 + dx01 * pow(dy01, 2))
-												- (-dx10 - dy01) * (-dx01 * dy01 * dy11 - dx10 * dx11 * dy10));
+						/ (dx11 * dy11 * (-dx01 * dy10 + dx10 * dy01)
+								+ dx11 * (dx01 * dy01 * dy10 + pow(dx10, 2) * dy10)
+								+ dy11 * (dx01 * dx10 * dy10 + dx01 * pow(dy01, 2))
+								- (-dx10 - dy01) * (-dx01 * dy01 * dy11 - dx10 * dx11 * dy10));
 		coeff[1][1] = (-dx10 * dx11 * dy10 + dx10 * dx11 * dy11)
-										/ (dx11 * dy11 * (-dx01 * dy10 + dx10 * dy01)
-												+ dx11 * (dx01 * dy01 * dy10 + pow(dx10, 2) * dy10)
-												+ dy11 * (dx01 * dx10 * dy10 + dx01 * pow(dy01, 2))
-												- (-dx10 - dy01) * (-dx01 * dy01 * dy11 - dx10 * dx11 * dy10));
+						/ (dx11 * dy11 * (-dx01 * dy10 + dx10 * dy01)
+								+ dx11 * (dx01 * dy01 * dy10 + pow(dx10, 2) * dy10)
+								+ dy11 * (dx01 * dx10 * dy10 + dx01 * pow(dy01, 2))
+								- (-dx10 - dy01) * (-dx01 * dy01 * dy11 - dx10 * dx11 * dy10));
 		coeff[1][2] = (-dx01 * dx10 * dy01 + dx01 * dx10 * dy10)
-										/ (dx11 * dy11 * (-dx01 * dy10 + dx10 * dy01)
-												+ dx11 * (dx01 * dy01 * dy10 + pow(dx10, 2) * dy10)
-												+ dy11 * (dx01 * dx10 * dy10 + dx01 * pow(dy01, 2))
-												- (-dx10 - dy01) * (-dx01 * dy01 * dy11 - dx10 * dx11 * dy10));
+						/ (dx11 * dy11 * (-dx01 * dy10 + dx10 * dy01)
+								+ dx11 * (dx01 * dy01 * dy10 + pow(dx10, 2) * dy10)
+								+ dy11 * (dx01 * dx10 * dy10 + dx01 * pow(dy01, 2))
+								- (-dx10 - dy01) * (-dx01 * dy01 * dy11 - dx10 * dx11 * dy10));
 		coeff[2][0] = (dx01 * dy11 - dx11 * dy01)
-										/ (dx11 * dy11 * (-dx01 * dy10 + dx10 * dy01)
-												+ dx11 * (dx01 * dy01 * dy10 + pow(dx10, 2) * dy10)
-												+ dy11 * (dx01 * dx10 * dy10 + dx01 * pow(dy01, 2))
-												- (-dx10 - dy01) * (-dx01 * dy01 * dy11 - dx10 * dx11 * dy10));
+						/ (dx11 * dy11 * (-dx01 * dy10 + dx10 * dy01)
+								+ dx11 * (dx01 * dy01 * dy10 + pow(dx10, 2) * dy10)
+								+ dy11 * (dx01 * dx10 * dy10 + dx01 * pow(dy01, 2))
+								- (-dx10 - dy01) * (-dx01 * dy01 * dy11 - dx10 * dx11 * dy10));
 		coeff[2][1] = (-dx10 * dy11 + dx11 * dy10)
-										/ (dx11 * dy11 * (-dx01 * dy10 + dx10 * dy01)
-												+ dx11 * (dx01 * dy01 * dy10 + pow(dx10, 2) * dy10)
-												+ dy11 * (dx01 * dx10 * dy10 + dx01 * pow(dy01, 2))
-												- (-dx10 - dy01) * (-dx01 * dy01 * dy11 - dx10 * dx11 * dy10));
+						/ (dx11 * dy11 * (-dx01 * dy10 + dx10 * dy01)
+								+ dx11 * (dx01 * dy01 * dy10 + pow(dx10, 2) * dy10)
+								+ dy11 * (dx01 * dx10 * dy10 + dx01 * pow(dy01, 2))
+								- (-dx10 - dy01) * (-dx01 * dy01 * dy11 - dx10 * dx11 * dy10));
 		coeff[2][2] = (-dx01 * dy10 + dx10 * dy01)
-										/ (dx11 * dy11 * (-dx01 * dy10 + dx10 * dy01)
-												+ dx11 * (dx01 * dy01 * dy10 + pow(dx10, 2) * dy10)
-												+ dy11 * (dx01 * dx10 * dy10 + dx01 * pow(dy01, 2))
-												- (-dx10 - dy01) * (-dx01 * dy01 * dy11 - dx10 * dx11 * dy10));
+						/ (dx11 * dy11 * (-dx01 * dy10 + dx10 * dy01)
+								+ dx11 * (dx01 * dy01 * dy10 + pow(dx10, 2) * dy10)
+								+ dy11 * (dx01 * dx10 * dy10 + dx01 * pow(dy01, 2))
+								- (-dx10 - dy01) * (-dx01 * dy01 * dy11 - dx10 * dx11 * dy10));
 	}
 
 	cout << "Inverse test" << endl;
