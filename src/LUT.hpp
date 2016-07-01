@@ -170,6 +170,7 @@ public:
 
 	void SetTDState_Ps (su2double P, su2double s );
 	void Interp2D_SingleSkewCoeff(std::string grid_var);
+	void InverseBlock(unsigned short nVar_mat, su2double *block, su2double *invBlock);
 	su2double Interp2D_Inv_Dist(std::string interpolant_var, su2double* dist);
 	void Interp2D_ArbitrarySkewCoeff(su2double x, su2double y, std::string grid_var);
 	su2double Interp2D_lin(su2double x, su2double y, std::string interpolant_var);
