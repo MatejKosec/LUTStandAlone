@@ -337,10 +337,7 @@ void CLookUpTable::SetTDState_rhoe(su2double rho, su2double e) {
 	cout << "e desired   : " << e << endl;
 
 	su2double RunVal;
-	unsigned int LowerI;
-	unsigned int UpperI;
-	unsigned int LowerJ;
-	unsigned int UpperJ;
+	unsigned int LowerI,UpperI,LowerJ,UpperJ,middleI, middleJ;
 
 	UpperJ = p_dim - 1;
 	LowerJ = 0;
@@ -349,39 +346,41 @@ void CLookUpTable::SetTDState_rhoe(su2double rho, su2double e) {
 	//Determine the I index: rho is not equispaced
 	UpperI = rho_dim -1;
 	LowerI = 0;
-	while (UpperI - LowerI > 1)
+
+	while (UpperI-LowerI>1)
 	{
+		middleI = (UpperI + LowerI)/2;
 		//Check current value
-		x00 = ThermoTables[LowerI][LowerJ].Density;
-		if (x00 < rho) {
-			LowerI = LowerI + ceil((UpperI - LowerI) / 2);
-		} else if (x00 > rho) {
-			UpperI = LowerI;
-			LowerI = LowerI / 2;
+		x00 = ThermoTables[middleI][LowerJ].Density;
+		grad = ThermoTables[middleI+1][LowerJ].Density -x00;
+		if (x00*grad > rho*grad) {
+			UpperI = middleI;
+		} else if (x00 < rho) {
+			LowerI = middleI;
 		}
 		if (x00 == rho) {
 			UpperI = LowerI + 1;
 			break;
 		}
-		cout << LowerJ << "  " << UpperJ << endl;
+		cout << LowerI << "  "<< UpperI << endl;
 	}
 
 	while (UpperJ - LowerJ > 1)
 	{
+		middleJ = (UpperJ+LowerJ)/2;
 		//Check current value
-		y00 = ThermoTables[LowerI][LowerJ].StaticEnergy;
-		y10 = ThermoTables[UpperI][LowerJ].StaticEnergy;
-		x00 = ThermoTables[LowerI][LowerJ].Density;
-		x10 = ThermoTables[UpperI][LowerJ].Density;
+		y00 = ThermoTables[LowerI][middleJ].StaticEnergy;
+		y10 = ThermoTables[UpperI][middleJ].StaticEnergy;
+		x00 = ThermoTables[LowerI][middleJ].Density;
+		x10 = ThermoTables[UpperI][middleJ].Density;
 		//BUG FIXED: interpolate the 'e' value along the line between the two rho values
 		//also applied to all other searches.
 		RunVal = y00 + (y10 - y00) / (x10 - x00) * (rho - x00);
 		grad = ThermoTables[LowerI][UpperJ].StaticEnergy - y00;
-		if ( RunVal <  e) {
-			LowerJ = LowerJ + ceil((UpperJ - LowerJ) / 2);
-		} else if (RunVal > e) {
-			UpperJ = LowerJ;
-			LowerJ = LowerJ / 2;
+		if ( RunVal*grad >	e*grad) {
+			UpperJ = middleJ;
+		} else if (RunVal*grad < e*grad) {
+			LowerJ = middleJ;
 		}
 		if (RunVal == e) {
 			UpperJ = LowerJ + 1;
@@ -389,7 +388,6 @@ void CLookUpTable::SetTDState_rhoe(su2double rho, su2double e) {
 		}
 		cout << LowerJ << "  " << UpperJ << endl;
 	}
-
 
 	iIndex = LowerI;
 	jIndex = LowerJ;
@@ -619,7 +617,7 @@ void CLookUpTable::SetTDState_Prho(su2double P, su2double rho) {
 			LowerJ = LowerJ + ceil((UpperJ - LowerJ) / 2);
 		} else if (y00 > P) {
 			UpperJ = LowerJ;
-			LowerJ = LowerJ / 2;
+			LowerJ = LowerJ/2;
 		}
 		if (y00 == P) {
 			UpperJ = LowerJ + 1;
@@ -627,7 +625,6 @@ void CLookUpTable::SetTDState_Prho(su2double P, su2double rho) {
 		}
 		cout << LowerJ << "  " << UpperJ << endl;
 	}
-
 
 	while (UpperI - LowerI > 1)
 	{
@@ -643,7 +640,7 @@ void CLookUpTable::SetTDState_Prho(su2double P, su2double rho) {
 			UpperI = LowerI + 1;
 			break;
 		}
-		cout << LowerJ << "  " << UpperJ << endl;
+		cout << LowerI << "  " << UpperI << endl;
 	}
 
 
@@ -971,7 +968,7 @@ void CLookUpTable::SetTDState_rhoT(su2double rho, su2double T) {
 				UpperI = LowerI + 1;
 				break;
 			}
-			cout << LowerJ << "  " << UpperJ << endl;
+			cout << LowerI << "  " << UpperI << endl;
 		}
 
 	//Determine the I index (for T)
@@ -1054,89 +1051,6 @@ void CLookUpTable::SetTDState_rhoT(su2double rho, su2double T) {
 	if ((Pressure > Pressure_limits[1]) or (Pressure < Pressure_limits[0])) {
 		cerr << "RHOT Interpolated Pressure out of bounds\n";
 	}
-}
-void CLookUpTable::InverseBlock(unsigned short nVar_mat, su2double *block,
-		su2double *invBlock) {
-
-	unsigned short i, j, k;
-	unsigned short temp;
-	su2double temporary, r;
-	su2double **augmentedmatrix = new su2double*[nVar_mat];
-
-	for (i = 0; i < nVar_mat; i++) {
-		augmentedmatrix[i] = new su2double[2 * nVar_mat];
-	}
-
-	for (i = 0; i < nVar_mat; i++)
-		for (j = 0; j < nVar_mat; j++)
-			augmentedmatrix[i][j] = block[i * nVar_mat + j];
-
-	/* augmenting with identity matrix of similar dimensions */
-
-	for (i = 0; i < nVar_mat; i++)
-		for (j = nVar_mat; j < 2 * nVar_mat; j++)
-			if (i == j % nVar_mat)
-				augmentedmatrix[i][j] = 1;
-			else
-				augmentedmatrix[i][j] = 0;
-
-	/* using gauss-jordan elimination */
-
-	for (j = 0; j < nVar_mat; j++) {
-		temp = j;
-
-		/* swapping row if a[j][j]=0 with first non-zero row below jth row */
-
-		if (augmentedmatrix[j][j] == 0) {
-			/* Finding first non-zero row */
-			for (i = j + 1; i < nVar_mat; i++)
-				if (augmentedmatrix[i][j] != 0) {
-					temp = i;
-					break;
-				}
-
-			/* Swapping current row with temp row */
-			for (k = 0; k < 2 * nVar_mat; k++) {
-				temporary = augmentedmatrix[j][k];
-				augmentedmatrix[j][k] = augmentedmatrix[temp][k];
-				augmentedmatrix[temp][k] = temporary;
-			}
-		}
-
-		/* performing row operations to form required identity matrix out of the input matrix */
-
-		for (i = 0; i < nVar_mat; i++)
-			if (i != j) {
-				r = augmentedmatrix[i][j];
-				for (k = 0; k < 2 * nVar_mat; k++) {
-					if (augmentedmatrix[j][j] != 0) {
-						augmentedmatrix[i][k] -= (augmentedmatrix[j][k]
-																												 / augmentedmatrix[j][j]) * r;
-
-					}
-				}
-			} else {
-				r = augmentedmatrix[i][j];
-				if (r != 0) {
-					for (k = 0; k < 2 * nVar_mat; k++)
-						augmentedmatrix[i][k] /= r;
-				}
-
-			}
-
-	}
-
-	for (i = 0; i < nVar_mat; i++) {
-		for (j = nVar_mat; j < 2 * nVar_mat; j++)
-			invBlock[i * nVar_mat + j - nVar_mat] = augmentedmatrix[i][j];
-	}
-
-	/*--- delete dynamic memory for augmented matrix ---*/
-	for (k = 0; k < nVar_mat; k++) {
-		delete[] augmentedmatrix[k];
-	}
-	delete[] augmentedmatrix;
-
 }
 
 void CLookUpTable::Interp2D_ArbitrarySkewCoeff(su2double x, su2double y,
