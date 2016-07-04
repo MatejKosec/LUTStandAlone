@@ -431,6 +431,7 @@ void CLookUpTable::SetTDState_rhoe(su2double rho, su2double e) {
 	Density = rho;
 	Entropy = Interp2D_lin(x, y, "Entropy");
 	Pressure = Interp2D_lin(x, y, "Pressure");
+	Enthalpy = Interp2D_lin(x, y, "Enthalpy");
 	SoundSpeed2 = Interp2D_lin(x, y, "SoundSpeed2");
 	Temperature = Interp2D_lin(x, y, "Temperature");
 	dPdrho_e = Interp2D_lin(x, y, "dPdrho_e");
@@ -553,6 +554,7 @@ void CLookUpTable::SetTDState_PT(su2double P, su2double T) {
 	Temperature = T;
 	Pressure = P;
 	StaticEnergy = Interp2D_lin(x, y, "StaticEnergy");
+	Enthalpy = Interp2D_lin(x, y, "Enthalpy");
 	Entropy = Interp2D_lin(x, y, "Entropy");
 	Density = Interp2D_lin(x, y, "Density");
 	SoundSpeed2 = Interp2D_lin(x, y, "SoundSpeed2");
@@ -672,6 +674,7 @@ void CLookUpTable::SetTDState_Prho(su2double P, su2double rho) {
 	Pressure = P;
 	Density = rho;
 	StaticEnergy = Interp2D_lin(x, y, "StaticEnergy");
+	Enthalpy = Interp2D_lin(x, y, "Enthalpy");
 	Entropy = Interp2D_lin(x, y, "Entropy");
 	SoundSpeed2 = Interp2D_lin(x, y, "SoundSpeed2");
 	Temperature = Interp2D_lin(x, y, "Temperature");
@@ -762,7 +765,7 @@ void CLookUpTable::SetTDState_hs(su2double h, su2double s) {
 	//Now use the closest fit box to interpolat
 	su2double x, y;
 	Entropy = s;
-	//	Enthalpy          = h;
+	Enthalpy          = h;
 	StaticEnergy = Interp2D_Inv_Dist("StaticEnergy", best_dist);
 	Density = Interp2D_Inv_Dist("Density", best_dist);
 	Pressure = Interp2D_Inv_Dist("Pressure", best_dist);
@@ -891,6 +894,7 @@ void CLookUpTable::SetTDState_Ps(su2double P, su2double s) {
 	Entropy = s;
 	Pressure = P;
 	StaticEnergy = Interp2D_lin(x, y, "StaticEnergy");
+	Enthalpy = Interp2D_lin(x, y, "Enthalpy");
 	Density = Interp2D_lin(x, y, "Density");
 	SoundSpeed2 = Interp2D_lin(x, y, "SoundSpeed2");
 	Temperature = Interp2D_lin(x, y, "Temperature");
@@ -1021,6 +1025,7 @@ void CLookUpTable::SetTDState_rhoT(su2double rho, su2double T) {
 	Temperature = T;
 	Density = rho;
 	StaticEnergy = Interp2D_lin(x, y, "StaticEnergy");
+	Enthalpy = Interp2D_lin(x, y, "Enthalpy");
 	Entropy = Interp2D_lin(x, y, "Entropy");
 	Pressure = Interp2D_lin(x, y, "Pressure");
 	SoundSpeed2 = Interp2D_lin(x, y, "SoundSpeed2");
