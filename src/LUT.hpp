@@ -3,7 +3,7 @@
 
 struct KD_node
 {
-	int depth, dim, *i_values;
+	int Branch_Splitting_Direction, Branch_Dimension, *Flattened_Point_Index;
 	su2double * x_values, * y_values;
 	KD_node* upper;
 	KD_node* lower;
@@ -54,34 +54,50 @@ class CLookUpTable {
 
 protected:
 	CThermoList **ThermoTables;
-	su2double coeff[3][3]; //Interpolation coefficients
-	/*!< \brief Fluid derivative DktDT_rho. */
+	su2double Interpolation_Coeff[3][3]; /*!< \brief Fluid derivative DktDT_rho. */
 	long iIndex, jIndex;
-	int p_dim, rho_dim; /*!< \brief The pressure and density dimensions of the table */
+	int Table_Pressure_Stations, Table_Density_Stations; /*!< \brief The pressure and density dimensions of the table */
 	KD_node *HS_tree; //KD tree for HS thermoPair
-	CThermoList interpolated;
+	su2double StaticEnergy,			/*!< \brief Internal Energy. */
+	Entropy,  				/*!< \brief Entropy. */
+	Enthalpy,
+	Density,  				/*!< \brief Density. */
+	Pressure, 				/*!< \brief Pressure. */
+	SoundSpeed2, 		/*!< \brief SpeedSound. */
+	Temperature,			/*!< \brief Temperature. */
+	dPdrho_e, 				/*!< \brief Fluid derivative DpDd_e. */
+	dPde_rho, 				/*!< \brief Fluid derivative DpDe_d. */
+	dTdrho_e, 				/*!< \brief Fluid derivative DTDd_e. */
+	dTde_rho, 				/*!< \brief Fluid derivative DTDe_d. */
+	Cp,              /*!< \brief Specific Heat Capacity at constant pressure. */
+	Mu,					    /*!< \brief Laminar Viscosity. */
+	dmudrho_T, 			/*!< \brief Fluid derivative DmuDrho_T */
+	dmudT_rho,				/*!< \brief Fluid derivative DmuDT_rho. */
+	Kt,					    /*!< \brief Thermal Conductivity. */
+	dktdrho_T, 			/*!< \brief Fluid derivative DktDrho_T.  */
+	dktdT_rho;				/*!< \brief Fluid derivative DktDT_rho. */
 
-	su2double StaticEnergy_limits[2];
-	su2double Entropy_limits[2];
-	su2double Enthalpy_limits[2];
-	su2double Density_limits[2];
-	su2double Pressure_limits[2];
-	su2double SoundSpeed2_limits[2];
-	su2double Temperature_limits[2];
-	su2double dPdrho_e_limits[2];
-	su2double dPde_rho_limits[2];
-	su2double dTdrho_e_limits[2];
-	su2double dTde_rho_limits[2];
-	su2double Cp_limits[2];
-	su2double Mu_limits[2];
-	su2double dmudrho_T_limits[2];
-	su2double dmudT_rho_limits[2];
-	su2double Kt_limits[2];
-	su2double dktdrho_T_limits[2];
-	su2double dktdT_rho_limits[2];
+	su2double StaticEnergy_Table_Limits[2];
+	su2double Entropy_Table_Limits[2];
+	su2double Enthalpy_Table_Limits[2];
+	su2double Density_Table_Limits[2];
+	su2double Pressure_Table_Limits[2];
+	su2double SoundSpeed2_Table_Limits[2];
+	su2double Temperature_Table_Limits[2];
+	su2double dPdrho_e_Table_Limits[2];
+	su2double dPde_rho_Table_Limits[2];
+	su2double dTdrho_e_Table_Limits[2];
+	su2double dTde_rho_Table_Limits[2];
+	su2double Cp_Table_Limits[2];
+	su2double Mu_Table_Limits[2];
+	su2double dmudrho_T_Table_Limits[2];
+	su2double dmudT_rho_Table_Limits[2];
+	su2double Kt_Table_Limits[2];
+	su2double dktdrho_T_Table_Limits[2];
+	su2double dktdT_rho_Table_Limits[2];
 	//Nearest neighbour's i and j indexes
-	int NN_i[4];
-	int NN_j[4];
+	int Nearest_Neighbour_iIndex[4];
+	int Nearest_Neighbour_jIndex[4];
 
 public:
 
@@ -174,7 +190,7 @@ public:
 	su2double Interp2D_Inv_Dist(std::string interpolant_var, su2double* dist);
 	void Interp2D_ArbitrarySkewCoeff(su2double x, su2double y, std::string grid_var);
 	su2double Interp2D_lin(su2double x, su2double y, std::string interpolant_var);
-	void TableLoadCFX(char* filename);
+	void TableLoadCFX(std::string filename);
 	void LUTprint(void);
 	void TableDump(char* filename);
 	void RecordState(char* file);
