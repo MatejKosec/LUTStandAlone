@@ -88,19 +88,15 @@ CLookUpTable::CLookUpTable(char* Filename) {
 	}
 	iIndex = -1; //negative number means it hasn't been preset yet
 	jIndex = -1; //same
-	//Set the nearest neighbours to -1
-	for (int i = 0; i < 4; i++) {
-		Nearest_Neighbour_iIndex[i] = -1;
-		Nearest_Neighbour_jIndex[i] = -1;
-	}
+
 
 	cout << "Table_Pressure_Stations  : " << Table_Pressure_Stations << endl;
 	cout << "Table_Density_Stations: " << Table_Density_Stations << endl;
 	cout << "Building HS_tree" << endl;
 	su2double* xtemp = new su2double[Table_Density_Stations
-			* Table_Pressure_Stations];
+																	 * Table_Pressure_Stations];
 	su2double* ytemp = new su2double[Table_Density_Stations
-			* Table_Pressure_Stations];
+																	 * Table_Pressure_Stations];
 	int* itemp = new int[Table_Density_Stations * Table_Pressure_Stations];
 	for (int i = 0; i < Table_Density_Stations; i++) {
 		for (int j = 0; j < Table_Pressure_Stations; j++) {
@@ -229,51 +225,19 @@ su2double CLookUpTable::Dist_KD_Tree(su2double x, su2double y,
 	return dist;
 }
 
-void CLookUpTable::NN_KD_Tree(su2double thermo1, su2double thermo2,
-		KD_node *root, su2double best_dist) {
-	//Recursive nearest neighbor search of the KD tree, without unwinding
-	su2double dist;
-	dist = Dist_KD_Tree(thermo1, thermo2, root);
-
-	if (dist <= best_dist) {
-		best_dist = dist;
-		iIndex = root->Flattened_Point_Index[root->Branch_Dimension / 2]
-				/ Table_Pressure_Stations;
-		jIndex = root->Flattened_Point_Index[root->Branch_Dimension / 2]
-				% Table_Pressure_Stations;
-	}
-
-	if (root->Branch_Dimension > 1) {
-		if (root->Branch_Splitting_Direction % 2 == 0) {
-			if (root->x_values[root->Branch_Dimension / 2] <= thermo1) {
-				NN_KD_Tree(thermo1, thermo2, root->upper, best_dist);
-			} else if (root->x_values[root->Branch_Dimension / 2] > thermo1) {
-				NN_KD_Tree(thermo1, thermo2, root->lower, best_dist);
-			}
-		} else if (root->Branch_Splitting_Direction % 2 == 1) {
-			if (root->y_values[root->Branch_Dimension / 2] <= thermo2) {
-				NN_KD_Tree(thermo1, thermo2, root->upper, best_dist);
-			} else if (root->y_values[root->Branch_Dimension / 2] > thermo2) {
-				NN_KD_Tree(thermo1, thermo2, root->lower, best_dist);
-			}
-		}
-	}
-
-}
-
-void CLookUpTable::NN4_KD_Tree(su2double thermo1, su2double thermo2,
+void CLookUpTable::NN_N_KD_Tree(int N, su2double thermo1, su2double thermo2,
 		KD_node *root, su2double *best_dist) {
-	//Recursive search for the 4 nearest neighbors of the KD tree, with unwinding
+	//Recursive search for the nearest neighbors of the KD tree, with unwinding
 	su2double dist;
 	dist = Dist_KD_Tree(thermo1, thermo2, root);
 	//cout<<"Depth "<<root->Branch_Splitting_Direction;
 	int i = 0;
-	while (i < 4) {
+	while (i < N) {
 		if (dist == best_dist[i])
-			i = 5;
+			i = N+1;
 		if (dist < best_dist[i]) {
 			//cout<<" i:"<<i;
-			for (int j = 3; j > i; j--) {
+			for (int j = N-1; j > i; j--) {
 				//cout<<" j: "<<j;
 				best_dist[j] = best_dist[j - 1];
 				Nearest_Neighbour_iIndex[j] = Nearest_Neighbour_iIndex[j - 1];
@@ -282,11 +246,11 @@ void CLookUpTable::NN4_KD_Tree(su2double thermo1, su2double thermo2,
 			best_dist[i] = dist;
 			Nearest_Neighbour_iIndex[i] =
 					root->Flattened_Point_Index[root->Branch_Dimension / 2]
-							/ Table_Pressure_Stations;
+																			/ Table_Pressure_Stations;
 			Nearest_Neighbour_jIndex[i] =
 					root->Flattened_Point_Index[root->Branch_Dimension / 2]
-							% Table_Pressure_Stations;
-			i = 4;
+																			% Table_Pressure_Stations;
+			i = N+1;
 		}
 		i++;
 
@@ -295,32 +259,33 @@ void CLookUpTable::NN4_KD_Tree(su2double thermo1, su2double thermo2,
 	if ((root->Branch_Dimension > 1)) {
 		if (root->Branch_Splitting_Direction % 2 == 0) {
 			if (root->x_values[root->Branch_Dimension / 2] <= thermo1) {
-				NN4_KD_Tree(thermo1, thermo2, root->upper, best_dist);
-				if (dist < best_dist[3]) {
+				NN_N_KD_Tree(N,thermo1, thermo2, root->upper, best_dist);
+				if (dist < best_dist[N-1]) {
 
-					NN4_KD_Tree(thermo1, thermo2, root->lower, best_dist);
+					NN_N_KD_Tree(N, thermo1, thermo2, root->lower, best_dist);
 				}
 			} else if (root->x_values[root->Branch_Dimension / 2] > thermo1) {
-				NN4_KD_Tree(thermo1, thermo2, root->lower, best_dist);
-				if (dist < best_dist[3]) {
-					NN4_KD_Tree(thermo1, thermo2, root->upper, best_dist);
+				NN_N_KD_Tree(N,thermo1, thermo2, root->lower, best_dist);
+				if (dist < best_dist[N-1]) {
+					NN_N_KD_Tree(N, thermo1, thermo2, root->upper, best_dist);
 				}
 			}
 		} else if (root->Branch_Splitting_Direction % 2 == 1) {
 			if (root->y_values[root->Branch_Dimension / 2] <= thermo2) {
-				NN4_KD_Tree(thermo1, thermo2, root->upper, best_dist);
-				if (dist < best_dist[3]) {
-					NN4_KD_Tree(thermo1, thermo2, root->lower, best_dist);
+				NN_N_KD_Tree(N,thermo1, thermo2, root->upper, best_dist);
+				if (dist < best_dist[N-1]) {
+					NN_N_KD_Tree(N,thermo1, thermo2, root->lower, best_dist);
 				}
 			} else if (root->y_values[root->Branch_Dimension / 2] > thermo2) {
-				NN4_KD_Tree(thermo1, thermo2, root->lower, best_dist);
-				if (dist < best_dist[3]) {
-					NN4_KD_Tree(thermo1, thermo2, root->upper, best_dist);
+				NN_N_KD_Tree(N,thermo1, thermo2, root->lower, best_dist);
+				if (dist < best_dist[N-1]) {
+					NN_N_KD_Tree(N,thermo1, thermo2, root->upper, best_dist);
 				}
 			}
 		}
 	}
 }
+
 
 void CLookUpTable::SetTDState_rhoe(su2double rho, su2double e) {
 
@@ -332,7 +297,8 @@ void CLookUpTable::SetTDState_rhoe(su2double rho, su2double e) {
 			or (e < StaticEnergy_Table_Limits[0])) {
 		cerr << "RHOE Input StaticEnergy out of bounds\n";
 	}
-
+	Nearest_Neighbour_iIndex = new int[4];
+	Nearest_Neighbour_jIndex = new int[4];
 	su2double RunVal;
 	unsigned int LowerI, UpperI, LowerJ, UpperJ, middleI, middleJ;
 
@@ -387,7 +353,7 @@ void CLookUpTable::SetTDState_rhoe(su2double rho, su2double e) {
 	su2double x, y;
 	x = (rho - ThermoTables[iIndex][jIndex].Density) / Density_Table_Limits[1];
 	y = (e - ThermoTables[iIndex][jIndex].StaticEnergy)
-			/ StaticEnergy_Table_Limits[1];
+							/ StaticEnergy_Table_Limits[1];
 	//Set the nearest neigbours to the adjacent i and j vertexes
 	Nearest_Neighbour_iIndex[0] = iIndex;
 	Nearest_Neighbour_iIndex[1] = iIndex + 1;
@@ -427,6 +393,8 @@ void CLookUpTable::SetTDState_rhoe(su2double rho, su2double e) {
 			or (Pressure < Pressure_Table_Limits[0])) {
 		cerr << "RHOE Interpolated Pressure out of bounds\n";
 	}
+	delete [] Nearest_Neighbour_iIndex;
+	delete [] Nearest_Neighbour_jIndex;
 }
 
 void CLookUpTable::SetTDState_PT(su2double P, su2double T) {
@@ -438,6 +406,8 @@ void CLookUpTable::SetTDState_PT(su2double P, su2double T) {
 		cerr << "PT Input Temperature out of bounds\n";
 	}
 
+	Nearest_Neighbour_iIndex = new int[4];
+	Nearest_Neighbour_jIndex = new int[4];
 	unsigned int LowerI, UpperI, LowerJ, UpperJ, middleI, middleJ;
 
 	UpperJ = Table_Pressure_Stations - 1;
@@ -490,7 +460,7 @@ void CLookUpTable::SetTDState_PT(su2double P, su2double T) {
 
 	su2double x, y;
 	x = (T - ThermoTables[iIndex][jIndex].Temperature)
-			/ Temperature_Table_Limits[1];
+							/ Temperature_Table_Limits[1];
 	y = (P - ThermoTables[iIndex][jIndex].Pressure) / Pressure_Table_Limits[1];
 	//Set the nearest neigbours to the adjacent i and j vertexes
 	Nearest_Neighbour_iIndex[0] = iIndex;
@@ -531,6 +501,8 @@ void CLookUpTable::SetTDState_PT(su2double P, su2double T) {
 			or (Pressure < Pressure_Table_Limits[0])) {
 		cerr << "PT Interpolated Pressure out of bounds\n";
 	}
+	delete [] Nearest_Neighbour_iIndex;
+	delete [] Nearest_Neighbour_jIndex;
 }
 
 void CLookUpTable::SetTDState_Prho(su2double P, su2double rho) {
@@ -542,6 +514,8 @@ void CLookUpTable::SetTDState_Prho(su2double P, su2double rho) {
 		cerr << "PRHO Input Density out of bounds\n";
 	}
 
+	Nearest_Neighbour_iIndex = new int[4];
+	Nearest_Neighbour_jIndex = new int[4];
 	unsigned int LowerI, UpperI, LowerJ, UpperJ, middleI, middleJ;
 
 	UpperJ = Table_Pressure_Stations - 1;
@@ -633,6 +607,8 @@ void CLookUpTable::SetTDState_Prho(su2double P, su2double rho) {
 			or (Pressure < Pressure_Table_Limits[0])) {
 		cerr << "PRHO Interpolated Pressure out of bounds\n";
 	}
+	delete [] Nearest_Neighbour_iIndex;
+	delete [] Nearest_Neighbour_jIndex;
 
 }
 
@@ -648,49 +624,47 @@ void CLookUpTable::SetTDState_hs(su2double h, su2double s) {
 	if ((s > Entropy_Table_Limits[1]) or (s < Entropy_Table_Limits[0])) {
 		cerr << "HS Input Entropy out of bounds\n";
 	}
-	//cout<<endl<<"h desired : "<<h<<endl;
-	//cout<<"s desired   : "<<s<<endl;
-	iIndex = HS_tree->Flattened_Point_Index[HS_tree->Branch_Dimension / 2]
-			/ Table_Pressure_Stations;
-	jIndex = HS_tree->Flattened_Point_Index[HS_tree->Branch_Dimension / 2]
-			% Table_Pressure_Stations;
 
-	for (int i = 0; i < 4; i++) {
+	iIndex = HS_tree->Flattened_Point_Index[HS_tree->Branch_Dimension / 2]
+																					/ Table_Pressure_Stations;
+	jIndex = HS_tree->Flattened_Point_Index[HS_tree->Branch_Dimension / 2]
+																					% Table_Pressure_Stations;
+	int N = 10;
+	Nearest_Neighbour_iIndex = new int[N];
+  Nearest_Neighbour_jIndex = new int[N];
+  su2double *best_dist = new su2double[N];
+	for (int i = 0; i < N; i++) {
 		Nearest_Neighbour_iIndex[i] = -1;
 		Nearest_Neighbour_jIndex[i] = -1;
 	}
 
-	su2double best_dist[4];
-	for (int i = 0; i < 4; i++) {
+	for (int i = 0; i < N; i++) {
 		best_dist[i] = 1E10;
 	}
 
-	//cout<<"Search the HS_tree"<<endl;
-	NN4_KD_Tree(h, s, HS_tree, best_dist);
+	//Search the HS_tree
+	NN_N_KD_Tree(N,h, s, HS_tree, best_dist);
 
 	Entropy = s;
 	Enthalpy = h;
-	StaticEnergy = Interp2D_Inv_Dist("StaticEnergy", best_dist);
-	Density = Interp2D_Inv_Dist("Density", best_dist);
-	Pressure = Interp2D_Inv_Dist("Pressure", best_dist);
-	SoundSpeed2 = Interp2D_Inv_Dist("SoundSpeed2", best_dist);
-	Temperature = Interp2D_Inv_Dist("Temperature", best_dist);
-	dPdrho_e = Interp2D_Inv_Dist("dPdrho_e", best_dist);
-	dPde_rho = Interp2D_Inv_Dist("dPde_rho", best_dist);
-	dTdrho_e = Interp2D_Inv_Dist("dTdrho_e", best_dist);
-	dTde_rho = Interp2D_Inv_Dist("dTde_rho", best_dist);
-	Cp = Interp2D_Inv_Dist("Cp", best_dist);
-	Mu = Interp2D_Inv_Dist("Mu", best_dist);
-	dmudrho_T = Interp2D_Inv_Dist("dmudrho_T", best_dist);
-	dmudT_rho = Interp2D_Inv_Dist("dmudT_rho", best_dist);
-	Kt = Interp2D_Inv_Dist("Kt", best_dist);
-	dktdrho_T = Interp2D_Inv_Dist("dktdrho_T", best_dist);
-	dktdT_rho = Interp2D_Inv_Dist("dktdT_rho", best_dist);
+	StaticEnergy = Interp2D_Inv_Dist(N,"StaticEnergy", best_dist);
+	Density = Interp2D_Inv_Dist(N,"Density", best_dist);
+	Pressure = Interp2D_Inv_Dist(N,"Pressure", best_dist);
+	SoundSpeed2 = Interp2D_Inv_Dist(N,"SoundSpeed2", best_dist);
+	Temperature = Interp2D_Inv_Dist(N,"Temperature", best_dist);
+	dPdrho_e = Interp2D_Inv_Dist(N,"dPdrho_e", best_dist);
+	dPde_rho = Interp2D_Inv_Dist(N,"dPde_rho", best_dist);
+	dTdrho_e = Interp2D_Inv_Dist(N,"dTdrho_e", best_dist);
+	dTde_rho = Interp2D_Inv_Dist(N,"dTde_rho", best_dist);
+	Cp = Interp2D_Inv_Dist(N,"Cp", best_dist);
+	Mu = Interp2D_Inv_Dist(N,"Mu", best_dist);
+	dmudrho_T = Interp2D_Inv_Dist(N,"dmudrho_T", best_dist);
+	dmudT_rho = Interp2D_Inv_Dist(N,"dmudT_rho", best_dist);
+	Kt = Interp2D_Inv_Dist(N,"Kt", best_dist);
+	dktdrho_T = Interp2D_Inv_Dist(N,"dktdrho_T", best_dist);
+	dktdT_rho = Interp2D_Inv_Dist(N,"dktdT_rho", best_dist);
 
-	//
-	//
-	//cout<<"Interpolated fit:"<<endl;
-	//	CTLprint ();
+
 	if ((Density > Density_Table_Limits[1])
 			or (Density < Density_Table_Limits[0])) {
 		cerr << "HS Interpolated Density out of bounds\n";
@@ -699,6 +673,10 @@ void CLookUpTable::SetTDState_hs(su2double h, su2double s) {
 			or (Pressure < Pressure_Table_Limits[0])) {
 		cerr << "HS Interpolated Pressure out of bounds\n";
 	}
+	delete [] best_dist;
+	delete [] Nearest_Neighbour_iIndex;
+	delete [] Nearest_Neighbour_jIndex;
+
 }
 
 void CLookUpTable::SetTDState_Ps(su2double P, su2double s) {
@@ -711,7 +689,8 @@ void CLookUpTable::SetTDState_Ps(su2double P, su2double s) {
 	}
 
 	unsigned int LowerI, UpperI, LowerJ, UpperJ, middleI, middleJ;
-
+	Nearest_Neighbour_iIndex = new int[4];
+	Nearest_Neighbour_jIndex = new int[4];
 	UpperJ = Table_Pressure_Stations - 1;
 	LowerJ = 0;
 	su2double grad, x00, y00, y01, x01, RunVal;
@@ -805,6 +784,8 @@ void CLookUpTable::SetTDState_Ps(su2double P, su2double s) {
 			or (Pressure < Pressure_Table_Limits[0])) {
 		cerr << "PS Interpolated Pressure out of bounds\n";
 	}
+	delete [] Nearest_Neighbour_iIndex;
+	delete [] Nearest_Neighbour_jIndex;
 }
 
 void CLookUpTable::SetTDState_rhoT(su2double rho, su2double T) {
@@ -817,7 +798,8 @@ void CLookUpTable::SetTDState_rhoT(su2double rho, su2double T) {
 	}
 
 	unsigned int LowerI, UpperI, LowerJ, UpperJ, middleI, middleJ;
-
+	Nearest_Neighbour_iIndex = new int[4];
+	Nearest_Neighbour_jIndex = new int[4];
 	UpperJ = Table_Pressure_Stations - 1;
 	LowerJ = 0;
 	su2double grad, x00, y00, y10, x10, RunVal;
@@ -869,7 +851,7 @@ void CLookUpTable::SetTDState_rhoT(su2double rho, su2double T) {
 	su2double x, y;
 	x = (rho - ThermoTables[iIndex][jIndex].Density) / Density_Table_Limits[1];
 	y = (T - ThermoTables[iIndex][jIndex].Temperature)
-			/ Temperature_Table_Limits[1];
+							/ Temperature_Table_Limits[1];
 	//Set the nearest neigbours to the adjacent i and j vertexes
 	Nearest_Neighbour_iIndex[0] = iIndex;
 	Nearest_Neighbour_iIndex[1] = iIndex + 1;
@@ -910,6 +892,8 @@ void CLookUpTable::SetTDState_rhoT(su2double rho, su2double T) {
 			or (Pressure < Pressure_Table_Limits[0])) {
 		cerr << "RHOT Interpolated Pressure out of bounds\n";
 	}
+	delete [] Nearest_Neighbour_iIndex;
+	delete [] Nearest_Neighbour_jIndex;
 }
 
 void CLookUpTable::Interp2D_ArbitrarySkewCoeff(su2double x, su2double y,
@@ -928,153 +912,153 @@ void CLookUpTable::Interp2D_ArbitrarySkewCoeff(su2double x, su2double y,
 	if (grid_var == "RHOE") {
 		x00 =
 				ThermoTables[Nearest_Neighbour_iIndex[0]][Nearest_Neighbour_jIndex[0]].Density
-						/ Density_Table_Limits[1];
+				/ Density_Table_Limits[1];
 		y00 =
 				ThermoTables[Nearest_Neighbour_iIndex[0]][Nearest_Neighbour_jIndex[0]].StaticEnergy
-						/ StaticEnergy_Table_Limits[1];
+				/ StaticEnergy_Table_Limits[1];
 		dx01 =
 				ThermoTables[Nearest_Neighbour_iIndex[2]][Nearest_Neighbour_jIndex[2]].Density
-						/ Density_Table_Limits[1] - x00;
+				/ Density_Table_Limits[1] - x00;
 		dy01 =
 				ThermoTables[Nearest_Neighbour_iIndex[2]][Nearest_Neighbour_jIndex[2]].StaticEnergy
-						/ StaticEnergy_Table_Limits[1] - y00;
+				/ StaticEnergy_Table_Limits[1] - y00;
 		dx10 =
 				ThermoTables[Nearest_Neighbour_iIndex[1]][Nearest_Neighbour_jIndex[1]].Density
-						/ Density_Table_Limits[1] - x00;
+				/ Density_Table_Limits[1] - x00;
 		dy10 =
 				ThermoTables[Nearest_Neighbour_iIndex[1]][Nearest_Neighbour_jIndex[1]].StaticEnergy
-						/ StaticEnergy_Table_Limits[1] - y00;
+				/ StaticEnergy_Table_Limits[1] - y00;
 		dx11 =
 				ThermoTables[Nearest_Neighbour_iIndex[3]][Nearest_Neighbour_jIndex[3]].Density
-						/ Density_Table_Limits[1] - x00;
+				/ Density_Table_Limits[1] - x00;
 		dy11 =
 				ThermoTables[Nearest_Neighbour_iIndex[3]][Nearest_Neighbour_jIndex[3]].StaticEnergy
-						/ StaticEnergy_Table_Limits[1] - y00;
+				/ StaticEnergy_Table_Limits[1] - y00;
 	} else if (grid_var == "PT") {
 		y00 =
 				ThermoTables[Nearest_Neighbour_iIndex[0]][Nearest_Neighbour_jIndex[0]].Pressure
-						/ Pressure_Table_Limits[1];
+				/ Pressure_Table_Limits[1];
 		x00 =
 				ThermoTables[Nearest_Neighbour_iIndex[0]][Nearest_Neighbour_jIndex[0]].Temperature
-						/ Temperature_Table_Limits[1];
+				/ Temperature_Table_Limits[1];
 		dy01 =
 				ThermoTables[Nearest_Neighbour_iIndex[2]][Nearest_Neighbour_jIndex[2]].Pressure
-						/ Pressure_Table_Limits[1] - y00;
+				/ Pressure_Table_Limits[1] - y00;
 		dx01 =
 				ThermoTables[Nearest_Neighbour_iIndex[2]][Nearest_Neighbour_jIndex[2]].Temperature
-						/ Temperature_Table_Limits[1] - x00;
+				/ Temperature_Table_Limits[1] - x00;
 		dy10 =
 				ThermoTables[Nearest_Neighbour_iIndex[1]][Nearest_Neighbour_jIndex[1]].Pressure
-						/ Pressure_Table_Limits[1] - y00;
+				/ Pressure_Table_Limits[1] - y00;
 		dx10 =
 				ThermoTables[Nearest_Neighbour_iIndex[1]][Nearest_Neighbour_jIndex[1]].Temperature
-						/ Temperature_Table_Limits[1] - x00;
+				/ Temperature_Table_Limits[1] - x00;
 		dy11 =
 				ThermoTables[Nearest_Neighbour_iIndex[3]][Nearest_Neighbour_jIndex[3]].Pressure
-						/ Pressure_Table_Limits[1] - y00;
+				/ Pressure_Table_Limits[1] - y00;
 		dx11 =
 				ThermoTables[Nearest_Neighbour_iIndex[3]][Nearest_Neighbour_jIndex[3]].Temperature
-						/ Temperature_Table_Limits[1] - x00;
+				/ Temperature_Table_Limits[1] - x00;
 	} else if (grid_var == "PRHO") {
 		y00 =
 				ThermoTables[Nearest_Neighbour_iIndex[0]][Nearest_Neighbour_jIndex[0]].Pressure
-						/ Pressure_Table_Limits[1];
+				/ Pressure_Table_Limits[1];
 		x00 =
 				ThermoTables[Nearest_Neighbour_iIndex[0]][Nearest_Neighbour_jIndex[0]].Density
-						/ Density_Table_Limits[1];
+				/ Density_Table_Limits[1];
 		dy01 =
 				ThermoTables[Nearest_Neighbour_iIndex[2]][Nearest_Neighbour_jIndex[2]].Pressure
-						/ Pressure_Table_Limits[1] - y00;
+				/ Pressure_Table_Limits[1] - y00;
 		dx01 =
 				ThermoTables[Nearest_Neighbour_iIndex[2]][Nearest_Neighbour_jIndex[2]].Density
-						/ Density_Table_Limits[1] - x00;
+				/ Density_Table_Limits[1] - x00;
 		dy10 =
 				ThermoTables[Nearest_Neighbour_iIndex[1]][Nearest_Neighbour_jIndex[1]].Pressure
-						/ Pressure_Table_Limits[1] - y00;
+				/ Pressure_Table_Limits[1] - y00;
 		dx10 =
 				ThermoTables[Nearest_Neighbour_iIndex[1]][Nearest_Neighbour_jIndex[1]].Density
-						/ Density_Table_Limits[1] - x00;
+				/ Density_Table_Limits[1] - x00;
 		dy11 =
 				ThermoTables[Nearest_Neighbour_iIndex[3]][Nearest_Neighbour_jIndex[3]].Pressure
-						/ Pressure_Table_Limits[1] - y00;
+				/ Pressure_Table_Limits[1] - y00;
 		dx11 =
 				ThermoTables[Nearest_Neighbour_iIndex[3]][Nearest_Neighbour_jIndex[3]].Density
-						/ Density_Table_Limits[1] - x00;
+				/ Density_Table_Limits[1] - x00;
 	} else if (grid_var == "RHOT") {
 		x00 =
 				ThermoTables[Nearest_Neighbour_iIndex[0]][Nearest_Neighbour_jIndex[0]].Density
-						/ Density_Table_Limits[1];
+				/ Density_Table_Limits[1];
 		y00 =
 				ThermoTables[Nearest_Neighbour_iIndex[0]][Nearest_Neighbour_jIndex[0]].Temperature
-						/ Temperature_Table_Limits[1];
+				/ Temperature_Table_Limits[1];
 		dx01 =
 				ThermoTables[Nearest_Neighbour_iIndex[2]][Nearest_Neighbour_jIndex[2]].Density
-						/ Density_Table_Limits[1] - x00;
+				/ Density_Table_Limits[1] - x00;
 		dy01 =
 				ThermoTables[Nearest_Neighbour_iIndex[2]][Nearest_Neighbour_jIndex[2]].Temperature
-						/ Temperature_Table_Limits[1] - y00;
+				/ Temperature_Table_Limits[1] - y00;
 		dx10 =
 				ThermoTables[Nearest_Neighbour_iIndex[1]][Nearest_Neighbour_jIndex[1]].Density
-						/ Density_Table_Limits[1] - x00;
+				/ Density_Table_Limits[1] - x00;
 		dy10 =
 				ThermoTables[Nearest_Neighbour_iIndex[1]][Nearest_Neighbour_jIndex[1]].Temperature
-						/ Temperature_Table_Limits[1] - y00;
+				/ Temperature_Table_Limits[1] - y00;
 		dx11 =
 				ThermoTables[Nearest_Neighbour_iIndex[3]][Nearest_Neighbour_jIndex[3]].Density
-						/ Density_Table_Limits[1] - x00;
+				/ Density_Table_Limits[1] - x00;
 		dy11 =
 				ThermoTables[Nearest_Neighbour_iIndex[3]][Nearest_Neighbour_jIndex[3]].Temperature
-						/ Temperature_Table_Limits[1] - y00;
+				/ Temperature_Table_Limits[1] - y00;
 	} else if (grid_var == "PS") {
 		y00 =
 				ThermoTables[Nearest_Neighbour_iIndex[0]][Nearest_Neighbour_jIndex[0]].Pressure
-						/ Pressure_Table_Limits[1];
+				/ Pressure_Table_Limits[1];
 		x00 =
 				ThermoTables[Nearest_Neighbour_iIndex[0]][Nearest_Neighbour_jIndex[0]].Entropy
-						/ Entropy_Table_Limits[1];
+				/ Entropy_Table_Limits[1];
 		dy01 =
 				ThermoTables[Nearest_Neighbour_iIndex[2]][Nearest_Neighbour_jIndex[2]].Pressure
-						/ Pressure_Table_Limits[1] - y00;
+				/ Pressure_Table_Limits[1] - y00;
 		dx01 =
 				ThermoTables[Nearest_Neighbour_iIndex[2]][Nearest_Neighbour_jIndex[2]].Entropy
-						/ Entropy_Table_Limits[1] - x00;
+				/ Entropy_Table_Limits[1] - x00;
 		dy10 =
 				ThermoTables[Nearest_Neighbour_iIndex[1]][Nearest_Neighbour_jIndex[1]].Pressure
-						/ Pressure_Table_Limits[1] - y00;
+				/ Pressure_Table_Limits[1] - y00;
 		dx10 =
 				ThermoTables[Nearest_Neighbour_iIndex[1]][Nearest_Neighbour_jIndex[1]].Entropy
-						/ Entropy_Table_Limits[1] - x00;
+				/ Entropy_Table_Limits[1] - x00;
 		dy11 =
 				ThermoTables[Nearest_Neighbour_iIndex[3]][Nearest_Neighbour_jIndex[3]].Pressure
-						/ Pressure_Table_Limits[1] - y00;
+				/ Pressure_Table_Limits[1] - y00;
 		dx11 =
 				ThermoTables[Nearest_Neighbour_iIndex[3]][Nearest_Neighbour_jIndex[3]].Entropy
-						/ Entropy_Table_Limits[1] - x00;
+				/ Entropy_Table_Limits[1] - x00;
 	} else if (grid_var == "HS") {
 		x00 =
 				ThermoTables[Nearest_Neighbour_iIndex[0]][Nearest_Neighbour_jIndex[0]].Enthalpy
-						/ Enthalpy_Table_Limits[1];
+				/ Enthalpy_Table_Limits[1];
 		y00 =
 				ThermoTables[Nearest_Neighbour_iIndex[0]][Nearest_Neighbour_jIndex[0]].Entropy
-						/ Entropy_Table_Limits[1];
+				/ Entropy_Table_Limits[1];
 		dx01 =
 				ThermoTables[Nearest_Neighbour_iIndex[2]][Nearest_Neighbour_jIndex[2]].Enthalpy
-						/ Enthalpy_Table_Limits[1] - x00;
+				/ Enthalpy_Table_Limits[1] - x00;
 		dy01 =
 				ThermoTables[Nearest_Neighbour_iIndex[2]][Nearest_Neighbour_jIndex[2]].Entropy
-						/ Entropy_Table_Limits[1] - y00;
+				/ Entropy_Table_Limits[1] - y00;
 		dx10 =
 				ThermoTables[Nearest_Neighbour_iIndex[1]][Nearest_Neighbour_jIndex[1]].Enthalpy
-						/ Enthalpy_Table_Limits[1] - x00;
+				/ Enthalpy_Table_Limits[1] - x00;
 		dy10 =
 				ThermoTables[Nearest_Neighbour_iIndex[1]][Nearest_Neighbour_jIndex[1]].Entropy
-						/ Entropy_Table_Limits[1] - y00;
+				/ Entropy_Table_Limits[1] - y00;
 		dx11 =
 				ThermoTables[Nearest_Neighbour_iIndex[3]][Nearest_Neighbour_jIndex[3]].Enthalpy
-						/ Enthalpy_Table_Limits[1] - x00;
+				/ Enthalpy_Table_Limits[1] - x00;
 		dy11 =
 				ThermoTables[Nearest_Neighbour_iIndex[3]][Nearest_Neighbour_jIndex[3]].Entropy
-						/ Entropy_Table_Limits[1] - y00;
+				/ Entropy_Table_Limits[1] - y00;
 	}
 	//Check if x, y is indeed in the quad
 	//Some extra logic is needed as the both monotonically increasing and monotonically decreasing functions
@@ -1090,11 +1074,11 @@ void CLookUpTable::Interp2D_ArbitrarySkewCoeff(su2double x, su2double y,
 		if (jIndex == 0) {
 			cerr << grid_var << ' ' << Nearest_Neighbour_iIndex[0] << ", "
 					<< Nearest_Neighbour_jIndex[0]
-					<< " interpolation point lies below the LUT\n";
+																			<< " interpolation point lies below the LUT\n";
 		} else {
 			cerr << grid_var << ' ' << Nearest_Neighbour_iIndex[0] << ", "
 					<< Nearest_Neighbour_jIndex[0]
-					<< " interpolation point lies below bottom boundary of selected quad\n";
+																			<< " interpolation point lies below bottom boundary of selected quad\n";
 		}
 	}
 	//Check RIGHT quad boundary
@@ -1103,11 +1087,11 @@ void CLookUpTable::Interp2D_ArbitrarySkewCoeff(su2double x, su2double y,
 		if (iIndex == (Table_Density_Stations - 1)) {
 			cerr << grid_var << ' ' << Nearest_Neighbour_iIndex[0] << ", "
 					<< Nearest_Neighbour_jIndex[0]
-					<< " interpolation point lies right of the LUT\n";
+																			<< " interpolation point lies right of the LUT\n";
 		} else {
 			cerr << grid_var << ' ' << Nearest_Neighbour_iIndex[0] << ", "
 					<< Nearest_Neighbour_jIndex[0]
-					<< " interpolation point lies to the right of the boundary of selected quad\n";
+																			<< " interpolation point lies to the right of the boundary of selected quad\n";
 		}
 	}
 	//Check TOP quad boundary
@@ -1116,11 +1100,11 @@ void CLookUpTable::Interp2D_ArbitrarySkewCoeff(su2double x, su2double y,
 		if (jIndex == Table_Pressure_Stations - 1) {
 			cerr << grid_var << ' ' << Nearest_Neighbour_iIndex[0] << ", "
 					<< Nearest_Neighbour_jIndex[0]
-					<< " interpolation point lies above the LUT\n";
+																			<< " interpolation point lies above the LUT\n";
 		} else {
 			cerr << grid_var << ' ' << Nearest_Neighbour_iIndex[0] << ", "
 					<< Nearest_Neighbour_jIndex[0]
-					<< +" interpolation point lies above the boundary of selected quad\n";
+																			<< +" interpolation point lies above the boundary of selected quad\n";
 		}
 	}
 	//Check LEFT quad boundary
@@ -1130,11 +1114,11 @@ void CLookUpTable::Interp2D_ArbitrarySkewCoeff(su2double x, su2double y,
 		if (iIndex == 0) {
 			cerr << grid_var << ' ' << Nearest_Neighbour_iIndex[0] << ", "
 					<< Nearest_Neighbour_jIndex[0]
-					<< " interpolation point lies left of the LUT\n";
+																			<< " interpolation point lies left of the LUT\n";
 		} else {
 			cerr << grid_var << ' ' << Nearest_Neighbour_iIndex[0] << ", "
 					<< Nearest_Neighbour_jIndex[0]
-					<< +" interpolation point lies to the left of the boundary of selected quad\n";
+																			<< +" interpolation point lies to the left of the boundary of selected quad\n";
 		}
 	}
 
@@ -1166,34 +1150,34 @@ void CLookUpTable::Interp2D_ArbitrarySkewCoeff(su2double x, su2double y,
 				/ (pow(dx10, 2) * dx11 * dy10 + dx10 * dx11 * dy01 * dy11
 						+ dx10 * dx11 * dy10 * (-dx10 - dy01));
 		Interpolation_Coeff[0][1] = (dx10 * dy10 * dy11 - dx11 * dy10 * dy11)
-				/ (pow(dx10, 2) * dx11 * dy10 + dx10 * dx11 * dy01 * dy11
-						+ dx10 * dx11 * dy10 * (-dx10 - dy01));
+								/ (pow(dx10, 2) * dx11 * dy10 + dx10 * dx11 * dy01 * dy11
+										+ dx10 * dx11 * dy10 * (-dx10 - dy01));
 		Interpolation_Coeff[0][2] = -dx10 * dy01 * dy10
 				/ (pow(dx10, 2) * dx11 * dy10 + dx10 * dx11 * dy01 * dy11
 						+ dx10 * dx11 * dy10 * (-dx10 - dy01));
 		Interpolation_Coeff[1][0] = 0;
 		Interpolation_Coeff[1][1] = (-dx10 * dx11 * dy10 + dx10 * dx11 * dy11)
-				/ (pow(dx10, 2) * dx11 * dy10 + dx10 * dx11 * dy01 * dy11
-						+ dx10 * dx11 * dy10 * (-dx10 - dy01));
+								/ (pow(dx10, 2) * dx11 * dy10 + dx10 * dx11 * dy01 * dy11
+										+ dx10 * dx11 * dy10 * (-dx10 - dy01));
 		Interpolation_Coeff[1][2] = 0;
 		Interpolation_Coeff[2][0] = -dx11 * dy01
 				/ (pow(dx10, 2) * dx11 * dy10 + dx10 * dx11 * dy01 * dy11
 						+ dx10 * dx11 * dy10 * (-dx10 - dy01));
 		Interpolation_Coeff[2][1] = (-dx10 * dy11 + dx11 * dy10)
-				/ (pow(dx10, 2) * dx11 * dy10 + dx10 * dx11 * dy01 * dy11
-						+ dx10 * dx11 * dy10 * (-dx10 - dy01));
+								/ (pow(dx10, 2) * dx11 * dy10 + dx10 * dx11 * dy01 * dy11
+										+ dx10 * dx11 * dy10 * (-dx10 - dy01));
 		Interpolation_Coeff[2][2] = dx10 * dy01
 				/ (pow(dx10, 2) * dx11 * dy10 + dx10 * dx11 * dy01 * dy11
 						+ dx10 * dx11 * dy10 * (-dx10 - dy01));
 	} else if (dy10 == 0) {
 		Interpolation_Coeff[0][0] = (-dx01 * dy01 * dy11 + dx11 * dy01 * dy11)
-				/ (dx01 * pow(dy01, 2) * dy11 + dx01 * dy01 * dy11 * (-dx10 - dy01)
-						+ dx10 * dx11 * dy01 * dy11);
+								/ (dx01 * pow(dy01, 2) * dy11 + dx01 * dy01 * dy11 * (-dx10 - dy01)
+										+ dx10 * dx11 * dy01 * dy11);
 		Interpolation_Coeff[0][1] = 0;
 		Interpolation_Coeff[0][2] = 0;
 		Interpolation_Coeff[1][0] = (dx01 * dx11 * dy01 - dx01 * dx11 * dy11)
-				/ (dx01 * pow(dy01, 2) * dy11 + dx01 * dy01 * dy11 * (-dx10 - dy01)
-						+ dx10 * dx11 * dy01 * dy11);
+								/ (dx01 * pow(dy01, 2) * dy11 + dx01 * dy01 * dy11 * (-dx10 - dy01)
+										+ dx10 * dx11 * dy01 * dy11);
 		Interpolation_Coeff[1][1] = dx10 * dx11 * dy11
 				/ (dx01 * pow(dy01, 2) * dy11 + dx01 * dy01 * dy11 * (-dx10 - dy01)
 						+ dx10 * dx11 * dy01 * dy11);
@@ -1201,8 +1185,8 @@ void CLookUpTable::Interp2D_ArbitrarySkewCoeff(su2double x, su2double y,
 				/ (dx01 * pow(dy01, 2) * dy11 + dx01 * dy01 * dy11 * (-dx10 - dy01)
 						+ dx10 * dx11 * dy01 * dy11);
 		Interpolation_Coeff[2][0] = (dx01 * dy11 - dx11 * dy01)
-				/ (dx01 * pow(dy01, 2) * dy11 + dx01 * dy01 * dy11 * (-dx10 - dy01)
-						+ dx10 * dx11 * dy01 * dy11);
+								/ (dx01 * pow(dy01, 2) * dy11 + dx01 * dy01 * dy11 * (-dx10 - dy01)
+										+ dx10 * dx11 * dy01 * dy11);
 		Interpolation_Coeff[2][1] = -dx10 * dy11
 				/ (dx01 * pow(dy01, 2) * dy11 + dx01 * dy01 * dy11 * (-dx10 - dy01)
 						+ dx10 * dx11 * dy01 * dy11);
@@ -1212,50 +1196,50 @@ void CLookUpTable::Interp2D_ArbitrarySkewCoeff(su2double x, su2double y,
 
 	} else {
 		Interpolation_Coeff[0][0] = (-dx01 * dy01 * dy11 + dx11 * dy01 * dy11)
-				/ (dx11 * dy11 * (-dx01 * dy10 + dx10 * dy01)
-						+ dx11 * (dx01 * dy01 * dy10 + pow(dx10, 2) * dy10)
-						+ dy11 * (dx01 * dx10 * dy10 + dx01 * pow(dy01, 2))
-						- (-dx10 - dy01) * (-dx01 * dy01 * dy11 - dx10 * dx11 * dy10));
+								/ (dx11 * dy11 * (-dx01 * dy10 + dx10 * dy01)
+										+ dx11 * (dx01 * dy01 * dy10 + pow(dx10, 2) * dy10)
+										+ dy11 * (dx01 * dx10 * dy10 + dx01 * pow(dy01, 2))
+										- (-dx10 - dy01) * (-dx01 * dy01 * dy11 - dx10 * dx11 * dy10));
 		Interpolation_Coeff[0][1] = (dx10 * dy10 * dy11 - dx11 * dy10 * dy11)
-				/ (dx11 * dy11 * (-dx01 * dy10 + dx10 * dy01)
-						+ dx11 * (dx01 * dy01 * dy10 + pow(dx10, 2) * dy10)
-						+ dy11 * (dx01 * dx10 * dy10 + dx01 * pow(dy01, 2))
-						- (-dx10 - dy01) * (-dx01 * dy01 * dy11 - dx10 * dx11 * dy10));
+								/ (dx11 * dy11 * (-dx01 * dy10 + dx10 * dy01)
+										+ dx11 * (dx01 * dy01 * dy10 + pow(dx10, 2) * dy10)
+										+ dy11 * (dx01 * dx10 * dy10 + dx01 * pow(dy01, 2))
+										- (-dx10 - dy01) * (-dx01 * dy01 * dy11 - dx10 * dx11 * dy10));
 		Interpolation_Coeff[0][2] = (dx01 * dy01 * dy10 - dx10 * dy01 * dy10)
-				/ (dx11 * dy11 * (-dx01 * dy10 + dx10 * dy01)
-						+ dx11 * (dx01 * dy01 * dy10 + pow(dx10, 2) * dy10)
-						+ dy11 * (dx01 * dx10 * dy10 + dx01 * pow(dy01, 2))
-						- (-dx10 - dy01) * (-dx01 * dy01 * dy11 - dx10 * dx11 * dy10));
+								/ (dx11 * dy11 * (-dx01 * dy10 + dx10 * dy01)
+										+ dx11 * (dx01 * dy01 * dy10 + pow(dx10, 2) * dy10)
+										+ dy11 * (dx01 * dx10 * dy10 + dx01 * pow(dy01, 2))
+										- (-dx10 - dy01) * (-dx01 * dy01 * dy11 - dx10 * dx11 * dy10));
 		Interpolation_Coeff[1][0] = (dx01 * dx11 * dy01 - dx01 * dx11 * dy11)
-				/ (dx11 * dy11 * (-dx01 * dy10 + dx10 * dy01)
-						+ dx11 * (dx01 * dy01 * dy10 + pow(dx10, 2) * dy10)
-						+ dy11 * (dx01 * dx10 * dy10 + dx01 * pow(dy01, 2))
-						- (-dx10 - dy01) * (-dx01 * dy01 * dy11 - dx10 * dx11 * dy10));
+								/ (dx11 * dy11 * (-dx01 * dy10 + dx10 * dy01)
+										+ dx11 * (dx01 * dy01 * dy10 + pow(dx10, 2) * dy10)
+										+ dy11 * (dx01 * dx10 * dy10 + dx01 * pow(dy01, 2))
+										- (-dx10 - dy01) * (-dx01 * dy01 * dy11 - dx10 * dx11 * dy10));
 		Interpolation_Coeff[1][1] = (-dx10 * dx11 * dy10 + dx10 * dx11 * dy11)
-				/ (dx11 * dy11 * (-dx01 * dy10 + dx10 * dy01)
-						+ dx11 * (dx01 * dy01 * dy10 + pow(dx10, 2) * dy10)
-						+ dy11 * (dx01 * dx10 * dy10 + dx01 * pow(dy01, 2))
-						- (-dx10 - dy01) * (-dx01 * dy01 * dy11 - dx10 * dx11 * dy10));
+								/ (dx11 * dy11 * (-dx01 * dy10 + dx10 * dy01)
+										+ dx11 * (dx01 * dy01 * dy10 + pow(dx10, 2) * dy10)
+										+ dy11 * (dx01 * dx10 * dy10 + dx01 * pow(dy01, 2))
+										- (-dx10 - dy01) * (-dx01 * dy01 * dy11 - dx10 * dx11 * dy10));
 		Interpolation_Coeff[1][2] = (-dx01 * dx10 * dy01 + dx01 * dx10 * dy10)
-				/ (dx11 * dy11 * (-dx01 * dy10 + dx10 * dy01)
-						+ dx11 * (dx01 * dy01 * dy10 + pow(dx10, 2) * dy10)
-						+ dy11 * (dx01 * dx10 * dy10 + dx01 * pow(dy01, 2))
-						- (-dx10 - dy01) * (-dx01 * dy01 * dy11 - dx10 * dx11 * dy10));
+								/ (dx11 * dy11 * (-dx01 * dy10 + dx10 * dy01)
+										+ dx11 * (dx01 * dy01 * dy10 + pow(dx10, 2) * dy10)
+										+ dy11 * (dx01 * dx10 * dy10 + dx01 * pow(dy01, 2))
+										- (-dx10 - dy01) * (-dx01 * dy01 * dy11 - dx10 * dx11 * dy10));
 		Interpolation_Coeff[2][0] = (dx01 * dy11 - dx11 * dy01)
-				/ (dx11 * dy11 * (-dx01 * dy10 + dx10 * dy01)
-						+ dx11 * (dx01 * dy01 * dy10 + pow(dx10, 2) * dy10)
-						+ dy11 * (dx01 * dx10 * dy10 + dx01 * pow(dy01, 2))
-						- (-dx10 - dy01) * (-dx01 * dy01 * dy11 - dx10 * dx11 * dy10));
+								/ (dx11 * dy11 * (-dx01 * dy10 + dx10 * dy01)
+										+ dx11 * (dx01 * dy01 * dy10 + pow(dx10, 2) * dy10)
+										+ dy11 * (dx01 * dx10 * dy10 + dx01 * pow(dy01, 2))
+										- (-dx10 - dy01) * (-dx01 * dy01 * dy11 - dx10 * dx11 * dy10));
 		Interpolation_Coeff[2][1] = (-dx10 * dy11 + dx11 * dy10)
-				/ (dx11 * dy11 * (-dx01 * dy10 + dx10 * dy01)
-						+ dx11 * (dx01 * dy01 * dy10 + pow(dx10, 2) * dy10)
-						+ dy11 * (dx01 * dx10 * dy10 + dx01 * pow(dy01, 2))
-						- (-dx10 - dy01) * (-dx01 * dy01 * dy11 - dx10 * dx11 * dy10));
+								/ (dx11 * dy11 * (-dx01 * dy10 + dx10 * dy01)
+										+ dx11 * (dx01 * dy01 * dy10 + pow(dx10, 2) * dy10)
+										+ dy11 * (dx01 * dx10 * dy10 + dx01 * pow(dy01, 2))
+										- (-dx10 - dy01) * (-dx01 * dy01 * dy11 - dx10 * dx11 * dy10));
 		Interpolation_Coeff[2][2] = (-dx01 * dy10 + dx10 * dy01)
-				/ (dx11 * dy11 * (-dx01 * dy10 + dx10 * dy01)
-						+ dx11 * (dx01 * dy01 * dy10 + pow(dx10, 2) * dy10)
-						+ dy11 * (dx01 * dx10 * dy10 + dx01 * pow(dy01, 2))
-						- (-dx10 - dy01) * (-dx01 * dy01 * dy11 - dx10 * dx11 * dy10));
+								/ (dx11 * dy11 * (-dx01 * dy10 + dx10 * dy01)
+										+ dx11 * (dx01 * dy01 * dy10 + pow(dx10, 2) * dy10)
+										+ dy11 * (dx01 * dx10 * dy10 + dx01 * pow(dy01, 2))
+										- (-dx10 - dy01) * (-dx01 * dy01 * dy11 - dx10 * dx11 * dy10));
 	}
 
 	//cout<<"Interpolation LHM matrix \n"<<"[";
@@ -1357,184 +1341,122 @@ void CLookUpTable::Interp2D_ArbitrarySkewCoeff(su2double x, su2double y,
 	 }*/
 	return;
 }
-su2double CLookUpTable::Interp2D_Inv_Dist(std::string interpolant_var,
-su2double* dist) {
+su2double CLookUpTable::Interp2D_Inv_Dist(int N, std::string interpolant_var,
+		su2double* dist) {
 	su2double interp_result = 0;
 	//The function values to interpolate from
-	su2double Interpolation_RHS[4];
+	su2double *Interpolation_RHS= new	su2double[N];
 	//For each case the values are filled differently
 	if (interpolant_var == "StaticEnergy") {
-		Interpolation_RHS[0] =
-				ThermoTables[Nearest_Neighbour_iIndex[0]][Nearest_Neighbour_jIndex[0]].StaticEnergy;
-		Interpolation_RHS[1] =
-				ThermoTables[Nearest_Neighbour_iIndex[1]][Nearest_Neighbour_jIndex[1]].StaticEnergy;
-		Interpolation_RHS[2] =
-				ThermoTables[Nearest_Neighbour_iIndex[2]][Nearest_Neighbour_jIndex[2]].StaticEnergy;
-		Interpolation_RHS[3] =
-				ThermoTables[Nearest_Neighbour_iIndex[3]][Nearest_Neighbour_jIndex[3]].StaticEnergy;
+		for (int i=0;i<N;i++)
+		{
+			Interpolation_RHS[i] = ThermoTables[Nearest_Neighbour_iIndex[i]][Nearest_Neighbour_jIndex[i]].StaticEnergy;
+		}
+
 	} else if (interpolant_var == "Entropy") {
-		Interpolation_RHS[0] =
-				ThermoTables[Nearest_Neighbour_iIndex[0]][Nearest_Neighbour_jIndex[0]].Entropy;
-		Interpolation_RHS[1] =
-				ThermoTables[Nearest_Neighbour_iIndex[1]][Nearest_Neighbour_jIndex[1]].Entropy;
-		Interpolation_RHS[2] =
-				ThermoTables[Nearest_Neighbour_iIndex[2]][Nearest_Neighbour_jIndex[2]].Entropy;
-		Interpolation_RHS[3] =
-				ThermoTables[Nearest_Neighbour_iIndex[3]][Nearest_Neighbour_jIndex[3]].Entropy;
+		for (int i=0;i<N;i++)
+		{
+			Interpolation_RHS[i] = ThermoTables[Nearest_Neighbour_iIndex[i]][Nearest_Neighbour_jIndex[i]].Entropy;
+		}
 	} else if (interpolant_var == "Density") {
-		Interpolation_RHS[0] =
-				ThermoTables[Nearest_Neighbour_iIndex[0]][Nearest_Neighbour_jIndex[0]].Density;
-		Interpolation_RHS[1] =
-				ThermoTables[Nearest_Neighbour_iIndex[1]][Nearest_Neighbour_jIndex[1]].Density;
-		Interpolation_RHS[2] =
-				ThermoTables[Nearest_Neighbour_iIndex[2]][Nearest_Neighbour_jIndex[2]].Density;
-		Interpolation_RHS[3] =
-				ThermoTables[Nearest_Neighbour_iIndex[3]][Nearest_Neighbour_jIndex[3]].Density;
+		for (int i=0;i<N;i++)
+		{
+			Interpolation_RHS[i] = ThermoTables[Nearest_Neighbour_iIndex[i]][Nearest_Neighbour_jIndex[i]].Density;
+		}
 	} else if (interpolant_var == "Pressure") {
-		Interpolation_RHS[0] =
-				ThermoTables[Nearest_Neighbour_iIndex[0]][Nearest_Neighbour_jIndex[0]].Pressure;
-		Interpolation_RHS[1] =
-				ThermoTables[Nearest_Neighbour_iIndex[1]][Nearest_Neighbour_jIndex[1]].Pressure;
-		Interpolation_RHS[2] =
-				ThermoTables[Nearest_Neighbour_iIndex[2]][Nearest_Neighbour_jIndex[2]].Pressure;
-		Interpolation_RHS[3] =
-				ThermoTables[Nearest_Neighbour_iIndex[3]][Nearest_Neighbour_jIndex[3]].Pressure;
+		for (int i=0;i<N;i++)
+		{
+			Interpolation_RHS[i] = ThermoTables[Nearest_Neighbour_iIndex[i]][Nearest_Neighbour_jIndex[i]].Pressure;
+		}
 	} else if (interpolant_var == "SoundSpeed2") {
-		Interpolation_RHS[0] =
-				ThermoTables[Nearest_Neighbour_iIndex[0]][Nearest_Neighbour_jIndex[0]].SoundSpeed2;
-		Interpolation_RHS[1] =
-				ThermoTables[Nearest_Neighbour_iIndex[1]][Nearest_Neighbour_jIndex[1]].SoundSpeed2;
-		Interpolation_RHS[2] =
-				ThermoTables[Nearest_Neighbour_iIndex[2]][Nearest_Neighbour_jIndex[2]].SoundSpeed2;
-		Interpolation_RHS[3] =
-				ThermoTables[Nearest_Neighbour_iIndex[3]][Nearest_Neighbour_jIndex[3]].SoundSpeed2;
+		for (int i=0;i<N;i++)
+		{
+			Interpolation_RHS[i] = ThermoTables[Nearest_Neighbour_iIndex[i]][Nearest_Neighbour_jIndex[i]].SoundSpeed2;
+		}
 	} else if (interpolant_var == "Temperature") {
-		Interpolation_RHS[0] =
-				ThermoTables[Nearest_Neighbour_iIndex[0]][Nearest_Neighbour_jIndex[0]].Temperature;
-		Interpolation_RHS[1] =
-				ThermoTables[Nearest_Neighbour_iIndex[1]][Nearest_Neighbour_jIndex[1]].Temperature;
-		Interpolation_RHS[2] =
-				ThermoTables[Nearest_Neighbour_iIndex[2]][Nearest_Neighbour_jIndex[2]].Temperature;
-		Interpolation_RHS[3] =
-				ThermoTables[Nearest_Neighbour_iIndex[3]][Nearest_Neighbour_jIndex[3]].Temperature;
+		for (int i=0;i<N;i++)
+		{
+			Interpolation_RHS[i] = ThermoTables[Nearest_Neighbour_iIndex[i]][Nearest_Neighbour_jIndex[i]].Temperature;
+		}
 	} else if (interpolant_var == "dPdrho_e") {
-		Interpolation_RHS[0] =
-				ThermoTables[Nearest_Neighbour_iIndex[0]][Nearest_Neighbour_jIndex[0]].dPdrho_e;
-		Interpolation_RHS[1] =
-				ThermoTables[Nearest_Neighbour_iIndex[1]][Nearest_Neighbour_jIndex[1]].dPdrho_e;
-		Interpolation_RHS[2] =
-				ThermoTables[Nearest_Neighbour_iIndex[2]][Nearest_Neighbour_jIndex[2]].dPdrho_e;
-		Interpolation_RHS[3] =
-				ThermoTables[Nearest_Neighbour_iIndex[3]][Nearest_Neighbour_jIndex[3]].dPdrho_e;
+		for (int i=0;i<N;i++)
+		{
+			Interpolation_RHS[i] = ThermoTables[Nearest_Neighbour_iIndex[i]][Nearest_Neighbour_jIndex[i]].dPdrho_e;
+		}
+
+
 	} else if (interpolant_var == "dPde_rho") {
-		Interpolation_RHS[0] =
-				ThermoTables[Nearest_Neighbour_iIndex[0]][Nearest_Neighbour_jIndex[0]].dPde_rho;
-		Interpolation_RHS[1] =
-				ThermoTables[Nearest_Neighbour_iIndex[1]][Nearest_Neighbour_jIndex[1]].dPde_rho;
-		Interpolation_RHS[2] =
-				ThermoTables[Nearest_Neighbour_iIndex[2]][Nearest_Neighbour_jIndex[2]].dPde_rho;
-		Interpolation_RHS[3] =
-				ThermoTables[Nearest_Neighbour_iIndex[3]][Nearest_Neighbour_jIndex[3]].dPde_rho;
+		for (int i=0;i<N;i++)
+		{
+			Interpolation_RHS[i] = ThermoTables[Nearest_Neighbour_iIndex[i]][Nearest_Neighbour_jIndex[i]].dPde_rho;
+		}
 	} else if (interpolant_var == "dTdrho_e") {
-		Interpolation_RHS[0] =
-				ThermoTables[Nearest_Neighbour_iIndex[0]][Nearest_Neighbour_jIndex[0]].dTdrho_e;
-		Interpolation_RHS[1] =
-				ThermoTables[Nearest_Neighbour_iIndex[1]][Nearest_Neighbour_jIndex[1]].dTdrho_e;
-		Interpolation_RHS[2] =
-				ThermoTables[Nearest_Neighbour_iIndex[2]][Nearest_Neighbour_jIndex[2]].dTdrho_e;
-		Interpolation_RHS[3] =
-				ThermoTables[Nearest_Neighbour_iIndex[3]][Nearest_Neighbour_jIndex[3]].dTdrho_e;
+		for (int i=0;i<N;i++)
+		{
+			Interpolation_RHS[i] = ThermoTables[Nearest_Neighbour_iIndex[i]][Nearest_Neighbour_jIndex[i]].dTdrho_e;
+		}
 	} else if (interpolant_var == "dTde_rho") {
-		Interpolation_RHS[0] =
-				ThermoTables[Nearest_Neighbour_iIndex[0]][Nearest_Neighbour_jIndex[0]].dTde_rho;
-		Interpolation_RHS[1] =
-				ThermoTables[Nearest_Neighbour_iIndex[1]][Nearest_Neighbour_jIndex[1]].dTde_rho;
-		Interpolation_RHS[2] =
-				ThermoTables[Nearest_Neighbour_iIndex[2]][Nearest_Neighbour_jIndex[2]].dTde_rho;
-		Interpolation_RHS[3] =
-				ThermoTables[Nearest_Neighbour_iIndex[3]][Nearest_Neighbour_jIndex[3]].dTde_rho;
+		for (int i=0;i<N;i++)
+		{
+			Interpolation_RHS[i] = ThermoTables[Nearest_Neighbour_iIndex[i]][Nearest_Neighbour_jIndex[i]].dTde_rho;
+		}
 	} else if (interpolant_var == "Cp") {
-		Interpolation_RHS[0] =
-				ThermoTables[Nearest_Neighbour_iIndex[0]][Nearest_Neighbour_jIndex[0]].Cp;
-		Interpolation_RHS[1] =
-				ThermoTables[Nearest_Neighbour_iIndex[1]][Nearest_Neighbour_jIndex[1]].Cp;
-		Interpolation_RHS[2] =
-				ThermoTables[Nearest_Neighbour_iIndex[2]][Nearest_Neighbour_jIndex[2]].Cp;
-		Interpolation_RHS[3] =
-				ThermoTables[Nearest_Neighbour_iIndex[3]][Nearest_Neighbour_jIndex[3]].Cp;
+		for (int i=0;i<N;i++)
+		{
+			Interpolation_RHS[i] = ThermoTables[Nearest_Neighbour_iIndex[i]][Nearest_Neighbour_jIndex[i]].Cp;
+		}
 	} else if (interpolant_var == "Mu") {
-		Interpolation_RHS[0] =
-				ThermoTables[Nearest_Neighbour_iIndex[0]][Nearest_Neighbour_jIndex[0]].Mu;
-		Interpolation_RHS[1] =
-				ThermoTables[Nearest_Neighbour_iIndex[1]][Nearest_Neighbour_jIndex[1]].Mu;
-		Interpolation_RHS[2] =
-				ThermoTables[Nearest_Neighbour_iIndex[2]][Nearest_Neighbour_jIndex[2]].Mu;
-		Interpolation_RHS[3] =
-				ThermoTables[Nearest_Neighbour_iIndex[3]][Nearest_Neighbour_jIndex[3]].Mu;
+		for (int i=0;i<N;i++)
+		{
+			Interpolation_RHS[i] = ThermoTables[Nearest_Neighbour_iIndex[i]][Nearest_Neighbour_jIndex[i]].Mu;
+		}
+
 	} else if (interpolant_var == "dmudrho_T") {
-		Interpolation_RHS[0] =
-				ThermoTables[Nearest_Neighbour_iIndex[0]][Nearest_Neighbour_jIndex[0]].dmudrho_T;
-		Interpolation_RHS[1] =
-				ThermoTables[Nearest_Neighbour_iIndex[1]][Nearest_Neighbour_jIndex[1]].dmudrho_T;
-		Interpolation_RHS[2] =
-				ThermoTables[Nearest_Neighbour_iIndex[2]][Nearest_Neighbour_jIndex[2]].dmudrho_T;
-		Interpolation_RHS[3] =
-				ThermoTables[Nearest_Neighbour_iIndex[3]][Nearest_Neighbour_jIndex[3]].dmudrho_T;
+		for (int i=0;i<N;i++)
+		{
+			Interpolation_RHS[i] = ThermoTables[Nearest_Neighbour_iIndex[i]][Nearest_Neighbour_jIndex[i]].dmudrho_T;
+		}
+
 	} else if (interpolant_var == "dmudT_rho") {
-		Interpolation_RHS[0] =
-				ThermoTables[Nearest_Neighbour_iIndex[0]][Nearest_Neighbour_jIndex[0]].dmudT_rho;
-		Interpolation_RHS[1] =
-				ThermoTables[Nearest_Neighbour_iIndex[1]][Nearest_Neighbour_jIndex[1]].dmudT_rho;
-		Interpolation_RHS[2] =
-				ThermoTables[Nearest_Neighbour_iIndex[2]][Nearest_Neighbour_jIndex[2]].dmudT_rho;
-		Interpolation_RHS[3] =
-				ThermoTables[Nearest_Neighbour_iIndex[3]][Nearest_Neighbour_jIndex[3]].dmudT_rho;
+		for (int i=0;i<N;i++)
+		{
+			Interpolation_RHS[i] = ThermoTables[Nearest_Neighbour_iIndex[i]][Nearest_Neighbour_jIndex[i]].dmudT_rho;
+		}
+
 	} else if (interpolant_var == "Kt") {
-		Interpolation_RHS[0] =
-				ThermoTables[Nearest_Neighbour_iIndex[0]][Nearest_Neighbour_jIndex[0]].Kt;
-		Interpolation_RHS[1] =
-				ThermoTables[Nearest_Neighbour_iIndex[1]][Nearest_Neighbour_jIndex[1]].Kt;
-		Interpolation_RHS[2] =
-				ThermoTables[Nearest_Neighbour_iIndex[2]][Nearest_Neighbour_jIndex[2]].Kt;
-		Interpolation_RHS[3] =
-				ThermoTables[Nearest_Neighbour_iIndex[3]][Nearest_Neighbour_jIndex[3]].Kt;
+		for (int i=0;i<N;i++)
+		{
+			Interpolation_RHS[i] = ThermoTables[Nearest_Neighbour_iIndex[i]][Nearest_Neighbour_jIndex[i]].Kt;
+		}
+
+
 	} else if (interpolant_var == "dktdrho_T") {
-		Interpolation_RHS[0] =
-				ThermoTables[Nearest_Neighbour_iIndex[0]][Nearest_Neighbour_jIndex[0]].dktdrho_T;
-		Interpolation_RHS[1] =
-				ThermoTables[Nearest_Neighbour_iIndex[1]][Nearest_Neighbour_jIndex[1]].dktdrho_T;
-		Interpolation_RHS[2] =
-				ThermoTables[Nearest_Neighbour_iIndex[2]][Nearest_Neighbour_jIndex[2]].dktdrho_T;
-		Interpolation_RHS[3] =
-				ThermoTables[Nearest_Neighbour_iIndex[3]][Nearest_Neighbour_jIndex[3]].dktdrho_T;
+		for (int i=0;i<N;i++)
+		{
+			Interpolation_RHS[i] = ThermoTables[Nearest_Neighbour_iIndex[i]][Nearest_Neighbour_jIndex[i]].dktdrho_T;
+		}
+
 	} else if (interpolant_var == "dktdT_rho") {
-		Interpolation_RHS[0] =
-				ThermoTables[Nearest_Neighbour_iIndex[0]][Nearest_Neighbour_jIndex[0]].dktdT_rho;
-		Interpolation_RHS[1] =
-				ThermoTables[Nearest_Neighbour_iIndex[1]][Nearest_Neighbour_jIndex[1]].dktdT_rho;
-		Interpolation_RHS[2] =
-				ThermoTables[Nearest_Neighbour_iIndex[2]][Nearest_Neighbour_jIndex[2]].dktdT_rho;
-		Interpolation_RHS[3] =
-				ThermoTables[Nearest_Neighbour_iIndex[3]][Nearest_Neighbour_jIndex[3]].dktdT_rho;
+		for (int i=0;i<N;i++)
+		{
+			Interpolation_RHS[i] = ThermoTables[Nearest_Neighbour_iIndex[i]][Nearest_Neighbour_jIndex[i]].dktdT_rho;
+		}
 	} else if (interpolant_var == "Enthalpy") {
-		Interpolation_RHS[0] =
-				ThermoTables[Nearest_Neighbour_iIndex[0]][Nearest_Neighbour_jIndex[0]].Enthalpy;
-		Interpolation_RHS[1] =
-				ThermoTables[Nearest_Neighbour_iIndex[1]][Nearest_Neighbour_jIndex[1]].Enthalpy;
-		Interpolation_RHS[2] =
-				ThermoTables[Nearest_Neighbour_iIndex[2]][Nearest_Neighbour_jIndex[2]].Enthalpy;
-		Interpolation_RHS[3] =
-				ThermoTables[Nearest_Neighbour_iIndex[3]][Nearest_Neighbour_jIndex[3]].Enthalpy;
+		for (int i=0;i<N;i++)
+		{
+			Interpolation_RHS[i] = ThermoTables[Nearest_Neighbour_iIndex[i]][Nearest_Neighbour_jIndex[i]].Enthalpy;
+		}
+
 	}
 
 	su2double dist_sum = 0;
-	for (int i = 0; i < 4; i++) {
+	for (int i = 0; i < N; i++) {
 		interp_result += (1 / dist[i]) * Interpolation_RHS[i];
 		dist_sum += 1 / dist[i];
 	}
 
 	interp_result = interp_result / dist_sum;
-
+	delete [] Interpolation_RHS;
 	return interp_result;
 }
 
@@ -1546,7 +1468,7 @@ su2double CLookUpTable::Interp2D_lin(su2double x, su2double y,
 	su2double Interpolation_Sol_Vector[3];
 	//The function values
 	su2double func_value_at_i0j0, func_value_at_i1j0, func_value_at_i0j1,
-			func_value_at_i1j1;
+	func_value_at_i1j1;
 	//For each case the values are filled differently
 	if (interpolant_var == "StaticEnergy") {
 		func_value_at_i0j0 =
@@ -1722,7 +1644,7 @@ su2double CLookUpTable::Interp2D_lin(su2double x, su2double y,
 	for (int i = 0; i < 3; i++) {
 		for (int j = 0; j < 3; j++) {
 			Interpolation_Sol_Vector[i] = Interpolation_Sol_Vector[i]
-					+ Interpolation_RHS[i] * Interpolation_Coeff[i][j];
+																														 + Interpolation_RHS[i] * Interpolation_Coeff[i][j];
 		}
 	}
 
@@ -1903,7 +1825,7 @@ void CLookUpTable::TableLoadCFX(string filename) {
 				// Check that additional tables all adhere to the same x,y dimensions, otherwise throw an error
 				else if (x != set_x && y != set_y) {
 					cerr
-							<< "The encountered dimensions of the CFX table are not the same throughout. They should be; for this to work.\n";
+					<< "The encountered dimensions of the CFX table are not the same throughout. They should be; for this to work.\n";
 
 				}
 				//Go through each one of the variables of interest

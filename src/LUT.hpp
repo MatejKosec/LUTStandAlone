@@ -96,8 +96,8 @@ protected:
 	su2double dktdrho_T_Table_Limits[2];
 	su2double dktdT_rho_Table_Limits[2];
 	//Nearest neighbour's i and j indexes
-	int Nearest_Neighbour_iIndex[4];
-	int Nearest_Neighbour_jIndex[4];
+	int *Nearest_Neighbour_iIndex;
+	int *Nearest_Neighbour_jIndex;
 
 public:
 
@@ -128,6 +128,7 @@ public:
 	void free_KD_tree(KD_node* root);
 	void NN_KD_Tree (su2double thermo1, su2double thermo2, KD_node *root, su2double best_dist);
 	void NN4_KD_Tree (su2double thermo1, su2double thermo2, KD_node *root, su2double* best_dist);
+	void NN_N_KD_Tree(int N, su2double thermo1, su2double thermo2, KD_node *root, su2double* best_dist);
 	void SearchZigZag (su2double thermo1, su2double thermo2,  unsigned long thermoPair );
 	void SearchThermoPair (su2double thermo1, su2double thermo2,  unsigned long thermoPair );
 
@@ -187,7 +188,7 @@ public:
 	void SetTDState_Ps (su2double P, su2double s );
 	void Interp2D_SingleSkewCoeff(std::string grid_var);
 	void InverseBlock(unsigned short nVar_mat, su2double *block, su2double *invBlock);
-	su2double Interp2D_Inv_Dist(std::string interpolant_var, su2double* dist);
+	su2double Interp2D_Inv_Dist(int N, std::string interpolant_var, su2double* dist);
 	void Interp2D_ArbitrarySkewCoeff(su2double x, su2double y, std::string grid_var);
 	su2double Interp2D_lin(su2double x, su2double y, std::string interpolant_var);
 	void TableLoadCFX(std::string filename);
