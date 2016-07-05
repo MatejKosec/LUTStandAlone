@@ -438,10 +438,10 @@ void CLookUpTable::SetTDState_PT(su2double P, su2double T) {
 	while (UpperI - LowerI > 1) {
 		middleI = (UpperI + LowerI) / 2;
 		//Check current value
-		y00 = ThermoTables[LowerI][LowerJ].Pressure;
-		y01 = ThermoTables[LowerI][UpperJ].Pressure;
-		x00 = ThermoTables[LowerI][LowerJ].Temperature;
-		x01 = ThermoTables[LowerI][UpperJ].Temperature;
+		y00 = ThermoTables[middleI][LowerJ].Pressure;
+		y01 = ThermoTables[middleI][UpperJ].Pressure;
+		x00 = ThermoTables[middleI][LowerJ].Temperature;
+		x01 = ThermoTables[middleI][UpperJ].Temperature;
 		grad = ThermoTables[UpperI][LowerJ].Temperature - x00;
 		RunVal = x00 + (x01 - x00) / (y01 - y00) * (P - y00);
 		if (RunVal * grad > T * grad) {
@@ -719,10 +719,10 @@ void CLookUpTable::SetTDState_Ps(su2double P, su2double s) {
 	while (UpperI - LowerI > 1) {
 		middleI = (UpperI + LowerI) / 2;
 		//Check current value
-		y00 = ThermoTables[LowerI][LowerJ].Pressure;
-		y01 = ThermoTables[LowerI][UpperJ].Pressure;
-		x00 = ThermoTables[LowerI][LowerJ].Entropy;
-		x01 = ThermoTables[LowerI][UpperJ].Entropy;
+		y00 = ThermoTables[middleI][LowerJ].Pressure;
+		y01 = ThermoTables[middleI][UpperJ].Pressure;
+		x00 = ThermoTables[middleI][LowerJ].Entropy;
+		x01 = ThermoTables[middleI][UpperJ].Entropy;
 		grad = ThermoTables[UpperI][LowerJ].Entropy - x00;
 		RunVal = x00 + (x01 - x00) / (y01 - y00) * (P - y00);
 		grad = ThermoTables[middleI + 1][LowerJ].Entropy - x00;
@@ -828,10 +828,10 @@ void CLookUpTable::SetTDState_rhoT(su2double rho, su2double T) {
 	while (UpperJ - LowerJ > 1) {
 		middleJ = (UpperJ + LowerJ) / 2;
 		//Check current value
-		y00 = ThermoTables[LowerI][LowerJ].Temperature;
-		y10 = ThermoTables[UpperI][LowerJ].Temperature;
-		x00 = ThermoTables[LowerI][LowerJ].Density;
-		x10 = ThermoTables[UpperI][LowerJ].Density;
+		y00 = ThermoTables[LowerI][middleJ].Temperature;
+		y10 = ThermoTables[UpperI][middleJ].Temperature;
+		x00 = ThermoTables[LowerI][middleJ].Density;
+		x10 = ThermoTables[UpperI][middleJ].Density;
 		RunVal = y00 + (y10 - y00) / (x10 - x00) * (rho - x00);
 		grad = ThermoTables[LowerI][UpperJ].Temperature - y00;
 		if (RunVal * grad > T * grad) {
