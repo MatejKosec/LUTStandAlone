@@ -117,11 +117,14 @@ class SciPy_InterpolatedData(ThermoData):
         
         for var in variables[sp.where((variables!=thermo1) * (variables!=thermo2))]:
             z = getattr(LUT,var)            
-            interp_func = sp.interpolate.interp2d(x,y,z,\
-            kind=interp_type,fill_value=None) 
-            setattr(self,var,sp.zeros_like(samples_x))
-            for i in range(len(samples_x)):
-                setattr(self,var,interp_func(samples_x[i], samples_y[i])[0])    
+            interp_func = sp.interpolate.griddata((x,y),z,sp.column_stack((samples_x,samples_y)),\
+            method=interp_type) 
+            nan_index = sp.where(sp.isnan(interp_func))
+            interp_func[nan_index]= sp.interpolate.griddata((x,y),z,\
+            sp.column_stack((samples_x[nan_index],samples_y[nan_index])),\
+            method='nearest') 
+            setattr(self,var,interp_func)
+            
         return  
           
         
@@ -160,6 +163,14 @@ class RefinementLevel(object):
    variables=sp.array(['Temperature','Density','Enthalpy','StaticEnergy',\
         'Entropy','Pressure','SoundSpeed2','dPdrho_e','dPde_rho',\
         'dTdrho_e','dTde_rho','Cp','Mu','Kt']);
+   select = {\
+        "rhoe":('Density','StaticEnergy'),\
+        "PT":('Pressure','Temperature'),\
+        "Prho":('Pressure','Density'),\
+        "rhoT":('Density','Temperature'),\
+        "Ps":('Pressure','Entropy'),\
+        "hs":('Enthalpy','Entropy')\
+        }
    LUT={};
    SU2={};
    RandomSamples=False;
@@ -200,24 +211,34 @@ class RefinementLevel(object):
             else:
                     return s + '%' 
         
-        
+        thermo1, thermo2, = self.select[which_case]
         #Plot the SU2 error
+        i=0;
         self.REL_ERR = 0;
-        for v in self.variables:
-                    self.REL_ERR = self.REL_ERR + ((getattr(self.SU2[which_case],v)-getattr(self.RandomSamples,v))/(getattr(self.RandomSamples,v)))**2;
-        self.REL_ERR = sp.sqrt(self.REL_ERR/14.0)
+        for v in self.variables[sp.where\
+        ((self.variables!=thermo1) * (self.variables!=thermo2))]:
+            i=i+1;
+            self.REL_ERR = self.REL_ERR + \
+            ((getattr(self.SU2[which_case],v)-getattr(self.RandomSamples,v))/\
+            (getattr(self.RandomSamples,v)))**2;
+        self.REL_ERR = sp.sqrt(self.REL_ERR/i)
         plt.hist(self.REL_ERR, bins=25, color='k', alpha=0.3, label='SU2')
-        #print sp.sort(self.REL_ERR)
+        print 'Error max SU2', max(self.REL_ERR)
         
         #Plot the SciPy error
+        i =0;
         self.REL_ERR = 0;
-        for v in self.variables:
-                    self.REL_ERR = self.REL_ERR + ((getattr(self.SciPy[which_case],v)-getattr(self.RandomSamples,v))/(getattr(self.RandomSamples,v)))**2;
-        self.REL_ERR = sp.sqrt(self.REL_ERR/14.0)
-        self.REL_ERR = sp.sort(self.REL_ERR)[:-1]
+        for v in self.variables[sp.where\
+        ((self.variables!=thermo1) * (self.variables!=thermo2))]:
+            i=i+1;
+            self.REL_ERR = self.REL_ERR + \
+            ((getattr(self.SciPy[which_case],v)-getattr(self.RandomSamples,v))/\
+            (getattr(self.RandomSamples,v)))**2;
+        self.REL_ERR = sp.sqrt(self.REL_ERR/i)
         
         plt.hist(self.REL_ERR, bins=25, color='c', alpha=0.5, label='SciPy')
-        #print sp.sort(self.REL_ERR)
+        print 'Error max SciPy', max(self.REL_ERR)
+
         
         formatter_y = FuncFormatter(yto_percent)
         formatter_x = FuncFormatter(xto_percent)
@@ -230,64 +251,40 @@ class RefinementLevel(object):
         return
        
               
-#if __name__ == '__main__':
-PR_files = os.listdir('TableLibrary')
-levels = len(PR_files);
-cases = ["rhoe","PT", "Prho","rhoT","Ps","hs"]
-Refinement_Levels = [RefinementLevel(PR_files[i], cases) for i in range(levels)]
-Random_Samples = RandomSamples('random.dat')
-for level in Refinement_Levels:
-    output_files = ["rhoe_out.dat","PT_out.dat", "Prho_out.dat","rhoT_out.dat","Ps_out.dat","hs_out.dat"]
-    for f in output_files:
-        try:
-             os.remove(f)
-        except OSError:
-             pass
-         
-    #Use the thermotable related to the desired refinement level
-    copyfile('TableLibrary/'+level.filename, 'CO2.rgp')  
-    print 'Mesh file:',  level.filename;
-    #Recompile if necessary             
-    os.system('make Debug/makefile');
-    print 'Running...'
-    #Run and save the log
-    os.system('Debug/TableReader>log');
-    print 'DONE'
-    level.load_mesh();
-    level.load_random_samples(Random_Samples)
-    level.load_results_SU2();
-    level.load_results_SciPy('linear');
-    #level.LUT.plot_mesh('Density','StaticEnergy')
-    level.plot_hist_compare('rhoe')
-    #level.plot_hist_compare('hs')
-    #level.plot_hist_compare('Prho')
+if __name__ == '__main__':
+    PR_files = os.listdir('TableLibrary')
+    levels = len(PR_files);
+    cases = ["rhoe","PT", "Prho","rhoT","Ps","hs"]
+    Refinement_Levels = [RefinementLevel(PR_files[i], cases) for i in range(levels)]
+    Random_Samples = RandomSamples('random.dat')
+    for level in Refinement_Levels:
+        output_files = ["rhoe_out.dat","PT_out.dat", "Prho_out.dat","rhoT_out.dat","Ps_out.dat","hs_out.dat"]
+        for f in output_files:
+            try:
+                 os.remove(f)
+            except OSError:
+                 pass
+             
+        #Use the thermotable related to the desired refinement level
+        copyfile('TableLibrary/'+level.filename, 'CO2.rgp')  
+        print 'Mesh file:',  level.filename;
+        #Recompile if necessary             
+        os.system('make Debug/makefile');
+        print 'Running...'
+        #Run and save the log
+        os.system('Debug/TableReader>log');
+        print 'DONE'
+        level.load_mesh();
+        level.load_random_samples(Random_Samples)
+        level.load_results_SU2();
+        level.load_results_SciPy('linear');
+        #level.LUT.plot_mesh('Density','StaticEnergy')
+        plt.figure(figsize=(16,6))
+        level.plot_hist_compare('rhoe')
+        #level.plot_hist_compare('hs')
+        #level.plot_hist_compare('Prho')
 """           
 
-#Plot the RMS of the error across all interpolated variables
-def plot_RMS(x,y):
-    REL_ERR = ((interp_Temperature-T)/max(T))**2;
-    REL_ERR = REL_ERR + ((interp_Density-rho)/max(rho))**2;
-    REL_ERR = REL_ERR + ((interp_Enthalpy-Enthalpy)/max(Enthalpy))**2;
-    REL_ERR = REL_ERR + ((interp_StaticEnergy-StaticEnergy)/max(StaticEnergy))**2;
-    REL_ERR = REL_ERR + ((interp_Entropy-Entropy)/max(Entropy))**2;
-    REL_ERR = REL_ERR + ((interp_Pressure-P)/max(P))**2;
-    REL_ERR = REL_ERR + ((interp_SoundSpeed2-SoundSpeed)/max(SoundSpeed))**2;
-    REL_ERR = REL_ERR + ((interp_dPdrho_e-dPdrho_e)/max(dPdrho_e))**2;
-    REL_ERR = REL_ERR + ((interp_dPde_rho-dPde_rho)/max(dPde_rho))**2;
-    REL_ERR = REL_ERR + ((interp_dTdrho_e-dTdrho_e)/max(dTdrho_e))**2;
-    REL_ERR = REL_ERR + ((interp_dTde_rho-dTde_rho)/max(dTde_rho))**2;
-    REL_ERR = REL_ERR + ((interp_Cp-Cp)/max(Cp))**2;
-    REL_ERR = REL_ERR + ((interp_Mu-Mu)/max(Mu))**2;
-    REL_ERR = REL_ERR + ((interp_Kt-Kt)/max(Kt))**2;
-    REL_ERR = sp.sqrt(REL_ERR/14.0)
-    #REL_ERR = REL_ERR/max(REL_ERR)
-    scat=plt.scatter(x,y,c =REL_ERR)
-    plt.grid(which='both')
-    scat.set_array(REL_ERR)
-    plt.colorbar(scat)
-    plt.xlim((min(x)*0.95,max(x)*1.05));
-    plt.ylim((min(y)*0.95,max(y)*1.05));
-    return REL_ERR
 
 def plot_hist_RMS(REL_ERR):
     #adapted from http://matplotlib.org/examples/pylab_examples/histogram_percent_demo.html
