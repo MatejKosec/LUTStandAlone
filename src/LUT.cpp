@@ -112,6 +112,7 @@ CLookUpTable::CLookUpTable(char* Filename) {
 
 CLookUpTable::~CLookUpTable(void) {
 	delete (ThermoTables);
+	free_KD_tree(HS_tree);
 }
 
 void CLookUpTable::free_KD_tree(KD_node* root) {
@@ -119,10 +120,8 @@ void CLookUpTable::free_KD_tree(KD_node* root) {
 		free_KD_tree(root->upper);
 		free_KD_tree(root->lower);
 	}
-	delete (root->x_values);
-	delete (root->y_values);
-	delete (root->Flattened_Point_Index);
-	delete (root);
+	su2double* test = root->x_values;
+	delete root;
 }
 
 struct KD_node* CLookUpTable::KD_Tree(su2double* x_values, su2double* y_values,
@@ -1663,8 +1662,10 @@ void CLookUpTable::LUTprint(void) {
 }
 
 void CLookUpTable::RecordState(char* file) {
+
 	fstream fs;
 	fs.open(file, fstream::app);
+	fs.precision(17);
 	assert(fs.is_open());
 	fs << Temperature << ", ";
 	fs << Density << ", ";
