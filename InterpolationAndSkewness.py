@@ -14,19 +14,19 @@ from shutil import copyfile
 import os 
 import sys
 
-Z = lambda x: sp.cos(x[0]) + sp.cos(x[1])
-#Z = lambda x: (x[0]) + (x[1])
-InternalAngle = sp.deg2rad(90);
+#Z = lambda x: sp.cos(x[0]-0.02) + sp.cos(x[1]+0.01) 
+Z = lambda x: (x[0]) + (x[1])
+InternalAngle = sp.deg2rad(80);
  
-quad_x = sp.array([0.0, 1.0, 1+sp.cos(InternalAngle), sp.cos(InternalAngle) ])
-quad_y = sp.array([0.0, 0.0, sp.sin(InternalAngle), sp.sin(InternalAngle) ])
+quad_x = sp.array([10.0, 11.0, 11+sp.cos(InternalAngle), 10+sp.cos(InternalAngle) ])
+quad_y = sp.array([10.0, 10.0, 10+sp.sin(InternalAngle), 10+sp.sin(InternalAngle) ])
 quad_z = Z([quad_x, quad_y])
 
 x_samples = sp.zeros((100,100))
 y_samples = sp.zeros((100,100))
 for i in range(100):
-    y_samples[:,i]= sp.linspace(0,sp.sin(InternalAngle),100)
-    x_lim = y_samples[i,0]/sp.tan(InternalAngle)
+    y_samples[:,i]= sp.linspace(10,10+sp.sin(InternalAngle),100)
+    x_lim = 10+(y_samples[i,0]-10)/sp.tan(InternalAngle)
     x_samples[i,:] = sp.linspace(x_lim,1+x_lim,100)
     
 #The correct values 
@@ -46,25 +46,27 @@ su2_interp = SU2_Z(interp_points_x,interp_points_y)
 su2_interp = su2_interp.reshape((100,100))
 su2_error  = (su2_interp - z_samples)/z_samples
 
-print quad_x
-print quad_y
-print quad_z
 def plot(i,zz):
     plt.figure(i, figsize=(10,10))
     plt.plot(sp.hstack((quad_x,quad_x[0])),sp.hstack((quad_y,quad_y[0])), '-g')
-    plt.plot(0,0, 'ro')
+    plt.plot(quad_x[0],quad_y[0], 'ro')
     plt.axis('equal')
     plt.grid('on')
-    plt.xlim((-1,2))
-    plt.ylim((-1,2))
+    plt.xlim((9,12))
+    plt.ylim((9,12))
     #plt.contourf(x_samples,y_samples,z_samples,100, interpolation=None)
-    plt.contourf(x_samples,y_samples,zz,100, interpolation=None)
+    plt.contourf(x_samples,y_samples,abs(zz),100, interpolation=None)
     plt.colorbar()
 
 
 plot(0,z_samples)
 plot(1,scipy_error)
 plot(2,su2_error)
+plt.figure(3)
+plt.plot(sp.sort(abs(scipy_error.reshape(100*100))), label='Scipy')
+plt.plot(sp.sort(abs(su2_error.reshape(100*100))),label='SU2')
+plt.legend()
+
 
             
 
