@@ -659,8 +659,9 @@ void CLookUpTable::SetTDState_hs(su2double h, su2double s) {
 	//Select correct element based on first
 	su2double dx,dy,x00, y00, dx10, dx01, dx11, dy10, dy01, dy11;
 	bool BOTTOM, TOP, LEFT, RIGHT, found=false;
-	for (int k=0;k<4;k++)
+	for (int k=0;k<16 and not found;k++)
 	{
+	cout<<k<<endl;
 	Nearest_Neighbour_iIndex[0] = iIndex;
 	Nearest_Neighbour_jIndex[0] = jIndex;
 	Nearest_Neighbour_iIndex[1] = iIndex + 1;
@@ -705,7 +706,7 @@ void CLookUpTable::SetTDState_hs(su2double h, su2double s) {
 	{
 		if (iIndex!=0) iIndex--;
 	}
-
+	else {found=true;}
 	}
 	//Determine interpolation coefficients
 	su2double x = h;
