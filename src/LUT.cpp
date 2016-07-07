@@ -88,9 +88,9 @@ CLookUpTable::CLookUpTable(char* Filename) {
 	cout << "Table_Density_Stations: " << Table_Density_Stations << endl;
 	cout << "Building HS_tree" << endl;
 	su2double* xtemp = new su2double[Table_Density_Stations
-																	 * Table_Pressure_Stations];
+			* Table_Pressure_Stations];
 	su2double* ytemp = new su2double[Table_Density_Stations
-																	 * Table_Pressure_Stations];
+			* Table_Pressure_Stations];
 	int* itemp = new int[Table_Density_Stations * Table_Pressure_Stations];
 	for (int i = 0; i < Table_Density_Stations; i++) {
 		for (int j = 0; j < Table_Pressure_Stations; j++) {
@@ -239,10 +239,10 @@ void CLookUpTable::NN_N_KD_Tree(int N, su2double thermo1, su2double thermo2,
 			best_dist[i] = dist;
 			Nearest_Neighbour_iIndex[i] =
 					root->Flattened_Point_Index[root->Branch_Dimension / 2]
-																			/ Table_Pressure_Stations;
+							/ Table_Pressure_Stations;
 			Nearest_Neighbour_jIndex[i] =
 					root->Flattened_Point_Index[root->Branch_Dimension / 2]
-																			% Table_Pressure_Stations;
+							% Table_Pressure_Stations;
 			i = N + 1;
 		}
 		i++;
@@ -616,9 +616,9 @@ void CLookUpTable::SetTDState_hs(su2double h, su2double s) {
 	}
 
 	iIndex = HS_tree->Flattened_Point_Index[HS_tree->Branch_Dimension / 2]
-																					/ Table_Pressure_Stations;
+			/ Table_Pressure_Stations;
 	jIndex = HS_tree->Flattened_Point_Index[HS_tree->Branch_Dimension / 2]
-																					% Table_Pressure_Stations;
+			% Table_Pressure_Stations;
 	int N = 10;
 	Nearest_Neighbour_iIndex = new int[N];
 	Nearest_Neighbour_jIndex = new int[N];
@@ -885,7 +885,7 @@ void CLookUpTable::SetTDState_rhoT(su2double rho, su2double T) {
 }
 
 su2double CLookUpTable::Interp2D_Inv_Dist(int N, std::string interpolant_var,
-		su2double* dist) {
+su2double* dist) {
 	su2double interp_result = 0;
 	//The function values to interpolate from
 	su2double *Interpolation_RHS = new su2double[N];
@@ -1002,11 +1002,12 @@ su2double CLookUpTable::Interp2D_Inv_Dist(int N, std::string interpolant_var,
 }
 inline void CLookUpTable::Gaussian_Inverse(int nDim) {
 
-  //su2double **temp = new su2double*[nDim];
-	//for (int i = 0; i < nDim; i++) {
+//	su2double **temp = new su2double*[nDim];
+//	for (int i = 0; i < nDim; i++) {
 //		temp[i] = new su2double[2 * nDim];
-	//}
+//	}
 	su2double temp[4][8];
+
 	for (int i = 0; i < nDim; i++) {
 		for (int j = 0; j < nDim; j++) {
 			temp[i][j] = Interpolation_Matrix[i][j];
@@ -1014,48 +1015,45 @@ inline void CLookUpTable::Gaussian_Inverse(int nDim) {
 		}
 		temp[i][nDim + i] = 1;
 	}
-	//Pivot the rows
-	su2double Pivot_Value;
-	for (int i = 0; i < nDim; i++) {
-		Pivot_Value = temp[i][i];
-		for (int j = i; j < nDim; j++) {
-			if (abs(temp[j][i]) > Pivot_Value) {
-				for (int k = 0; k < nDim; k++) {
-					su2double d = temp[i][k];
-					temp[i][k] = temp[j][k];
-					temp[j][k] = d;
-				}
-			}
-		}
-	}
-	//Lower Echelon
+
+	su2double max_val;
+	int max_idx;
+	//Pivot levels
 	for (int k = 0; k < nDim - 1; k++) {
-		if (temp[k][k] != 0) {
-			for (int i = k + 1; i < nDim; i++) {
-				su2double c = temp[i][k] / temp[k][k];
-				for (int j = 0; j < nDim+k; j++) {
-					temp[i][j] = temp[i][j] - temp[k][j] * c;
-				}
+		max_idx = k;
+		max_val = temp[k][k];
+		//Find the largest value in the column
+		for (int j = k; j < nDim; j++) {
+			if (abs(temp[j][k]) > max_val) {
+				max_idx = j;
+				max_val = temp[j][k];
+			}
+		}
+		//Move the row with the highest value up
+		for (int j = 0; j < (nDim * 2); j++) {
+			su2double d = temp[k][j];
+			temp[k][j] = temp[max_idx][j];
+			temp[max_idx][j] = d;
+		}
+		//Subtract the moved row from all other rows
+		for (int i = k + 1; i < nDim; i++) {
+			su2double c = temp[i][k] / temp[k][k];
+			for (int j = 0; j < (nDim * 2); j++) {
+				temp[i][j] = temp[i][j] - temp[k][j] * c;
 			}
 		}
 	}
-	//Upper Echelon
-	int k = nDim-1;
-	while (k>0) {
-	//for (int k = nDim - 1; k !=1; k--) {
+
+	//Back-substitution
+	for (int k = nDim - 1; k > 0; k--) {
 		if (temp[k][k] != 0) {
-			int i = k-1;
-			do {
-			//for (int i = k - 1; i != 0; i--) {
+			for (int i = k - 1; i > -1; i--) {
 				su2double c = temp[i][k] / temp[k][k];
-				for (int j = k; j < 2*nDim; j++) {
+				for (int j = 0; j < (nDim * 2); j++) {
 					temp[i][j] = temp[i][j] - temp[k][j] * c;
 				}
-			i--;
 			}
-			while(i>0);
 		}
-		k--;
 	}
 	//Normalize inverse
 	for (int i = 0; i < nDim; i++) {
@@ -1064,10 +1062,11 @@ inline void CLookUpTable::Gaussian_Inverse(int nDim) {
 			temp[i][j + nDim] = temp[i][j + nDim] / c;
 		}
 	}
+
 	//Copy inverse back to flow
 	for (int i = 0; i < nDim; i++) {
 		for (int j = 0; j < nDim; j++) {
-			Interpolation_Coeff[i][j] = temp[i][j+nDim];
+			Interpolation_Coeff[i][j] = temp[i][j + nDim];
 		}
 	}
 	//Delete dynamic arrays
@@ -1236,19 +1235,18 @@ void CLookUpTable::Interp2D_ArbitrarySkewCoeff(su2double x, su2double y,
 	//have to be anticipated
 	bool BOTTOM, TOP, LEFT, RIGHT;
 	su2double dy, dx, dx10, dy10, dx01, dy01, dx11, dy11;
-	dx   =  x-x00;
-	dy    = y-y00;
-	dx10 = x10-x00;
-	dy10 = y10-y00;
-	dx01 = x01-x00;
-	dy01 = y01-y00;
-	dx11 = x11-x00;
-	dy11 = y11-y00;
+	dx = x - x00;
+	dy = y - y00;
+	dx10 = x10 - x00;
+	dy10 = y10 - y00;
+	dx01 = x01 - x00;
+	dy01 = y01 - y00;
+	dx11 = x11 - x00;
+	dy11 = y11 - y00;
 	BOTTOM = (dy * dx10) < (dx * dy10);
 	TOP = ((dy - dy01) * (dx11 - dx01)) > ((dy11 - dy01) * (dx - dx01));
 	RIGHT = ((dx - dx10) * (dy11 - dy10)) > ((dx11 - dx10) * (dy - dy10));
 	LEFT = (dx * dy01) < (dx01 * dy);
-
 
 	//Check BOTTOM quad boundary
 	if (BOTTOM and !TOP) {
@@ -1256,11 +1254,11 @@ void CLookUpTable::Interp2D_ArbitrarySkewCoeff(su2double x, su2double y,
 		if (jIndex == 0) {
 			cerr << grid_var << ' ' << Nearest_Neighbour_iIndex[0] << ", "
 					<< Nearest_Neighbour_jIndex[0]
-																			<< " interpolation point lies below the LUT\n";
+					<< " interpolation point lies below the LUT\n";
 		} else {
 			cerr << grid_var << ' ' << Nearest_Neighbour_iIndex[0] << ", "
 					<< Nearest_Neighbour_jIndex[0]
-																			<< " interpolation point lies below bottom boundary of selected quad\n";
+					<< " interpolation point lies below bottom boundary of selected quad\n";
 		}
 	}
 	//Check RIGHT quad boundary
@@ -1269,11 +1267,11 @@ void CLookUpTable::Interp2D_ArbitrarySkewCoeff(su2double x, su2double y,
 		if (iIndex == (Table_Density_Stations - 1)) {
 			cerr << grid_var << ' ' << Nearest_Neighbour_iIndex[0] << ", "
 					<< Nearest_Neighbour_jIndex[0]
-																			<< " interpolation point lies right of the LUT\n";
+					<< " interpolation point lies right of the LUT\n";
 		} else {
 			cerr << grid_var << ' ' << Nearest_Neighbour_iIndex[0] << ", "
 					<< Nearest_Neighbour_jIndex[0]
-																			<< " interpolation point lies to the right of the boundary of selected quad\n";
+					<< " interpolation point lies to the right of the boundary of selected quad\n";
 		}
 	}
 	//Check TOP quad boundary
@@ -1282,11 +1280,11 @@ void CLookUpTable::Interp2D_ArbitrarySkewCoeff(su2double x, su2double y,
 		if (jIndex == Table_Pressure_Stations - 1) {
 			cerr << grid_var << ' ' << Nearest_Neighbour_iIndex[0] << ", "
 					<< Nearest_Neighbour_jIndex[0]
-																			<< " interpolation point lies above the LUT\n";
+					<< " interpolation point lies above the LUT\n";
 		} else {
 			cerr << grid_var << ' ' << Nearest_Neighbour_iIndex[0] << ", "
 					<< Nearest_Neighbour_jIndex[0]
-																			<< +" interpolation point lies above the boundary of selected quad\n";
+					<< +" interpolation point lies above the boundary of selected quad\n";
 		}
 	}
 	//Check LEFT quad boundary
@@ -1296,45 +1294,37 @@ void CLookUpTable::Interp2D_ArbitrarySkewCoeff(su2double x, su2double y,
 		if (iIndex == 0) {
 			cerr << grid_var << ' ' << Nearest_Neighbour_iIndex[0] << ", "
 					<< Nearest_Neighbour_jIndex[0]
-																			<< " interpolation point lies left of the LUT\n";
+					<< " interpolation point lies left of the LUT\n";
 		} else {
 			cerr << grid_var << ' ' << Nearest_Neighbour_iIndex[0] << ", "
 					<< Nearest_Neighbour_jIndex[0]
-																			<< +" interpolation point lies to the left of the boundary of selected quad\n";
+					<< +" interpolation point lies to the left of the boundary of selected quad\n";
 		}
 	}
 
 	//Setup the LHM matrix for the interpolation (Vandermonde)
 	Interpolation_Matrix[0][0] = 1;
-	Interpolation_Matrix[0][1] = x00;
-	Interpolation_Matrix[0][2] = y00;
-	Interpolation_Matrix[0][3] = x00 * y00;
+	Interpolation_Matrix[0][1] = 0;
+	Interpolation_Matrix[0][2] = 0;
+	Interpolation_Matrix[0][3] = 0;
 
 	Interpolation_Matrix[1][0] = 1;
-	Interpolation_Matrix[1][1] = x10;
-	Interpolation_Matrix[1][2] = y10;
-	Interpolation_Matrix[1][3] = x10 * y10;
+	Interpolation_Matrix[1][1] = x10 - x00;
+	Interpolation_Matrix[1][2] = y10 - y00;
+	Interpolation_Matrix[1][3] = (x10 - x00) * (y10 - y00);
 
 	Interpolation_Matrix[2][0] = 1;
-	Interpolation_Matrix[2][1] = x01;
-	Interpolation_Matrix[2][2] = y01;
-	Interpolation_Matrix[2][3] = x01 * y01;
+	Interpolation_Matrix[2][1] = x01 - x00;
+	Interpolation_Matrix[2][2] = y01 - y00;
+	Interpolation_Matrix[2][3] = (x01 - x00) * (y01 - y00);
 
 	Interpolation_Matrix[3][0] = 1;
-	Interpolation_Matrix[3][1] = x11;
-	Interpolation_Matrix[3][2] = y11;
-	Interpolation_Matrix[3][3] = x11 * y11;
+	Interpolation_Matrix[3][1] = x11 - x00;
+	Interpolation_Matrix[3][2] = y11 - y00;
+	Interpolation_Matrix[3][3] = (x11 - x00) * (y11 - y00);
 
 	Gaussian_Inverse(4);
 	//Inverse test
-	for (int i = 0; i < 4; i++) {
-		cout<<"[";
-			for (int j = 0; j < 4; j++) {
-				cout<<Interpolation_Coeff[i][j]*Interpolation_Matrix[i][j]<<"  ";
-			}
-			cout<<"]"<<endl;
-			}
-
 
 	//Transpose the inverse
 	for (int i = 0; i < 3; i++) {
@@ -1347,11 +1337,11 @@ void CLookUpTable::Interp2D_ArbitrarySkewCoeff(su2double x, su2double y,
 	//The transpose allows the same coefficients to be used for all Thermo variables (need only 4 coefficients)
 
 	for (int i = 0; i < 4; i++) {
-		su2double d=0;
-		d = d + Interpolation_Coeff[i][0]*1;
-		d = d + Interpolation_Coeff[i][1]*x;
-		d = d + Interpolation_Coeff[i][2]*y;
-		d = d + Interpolation_Coeff[i][3]*x*y;
+		su2double d = 0;
+		d = d + Interpolation_Coeff[i][0] * 1;
+		d = d + Interpolation_Coeff[i][1] * (x - x00);
+		d = d + Interpolation_Coeff[i][2] * (y - y00);
+		d = d + Interpolation_Coeff[i][3] * (x - x00) * (y - y00);
 		Interpolation_Coeff[i][0] = d;
 	}
 
@@ -1361,7 +1351,7 @@ void CLookUpTable::Interp2D_ArbitrarySkewCoeff(su2double x, su2double y,
 su2double CLookUpTable::Interp2D_lin(string interpolant_var) {
 	//The function values
 	su2double func_value_at_i0j0, func_value_at_i1j0, func_value_at_i0j1,
-	func_value_at_i1j1;
+			func_value_at_i1j1;
 	//For each case the values are filled differently
 	if (interpolant_var == "StaticEnergy") {
 		func_value_at_i0j0 =
@@ -1528,11 +1518,11 @@ su2double CLookUpTable::Interp2D_lin(string interpolant_var) {
 	}
 
 	//Using offset relative to i,j point yields a 3by3 system rather than 4by4
-	su2double result=0;
-	result = result + Interpolation_Coeff[0][0]*func_value_at_i0j0;
-	result = result + Interpolation_Coeff[1][0]*func_value_at_i1j0;
-	result = result + Interpolation_Coeff[2][0]*func_value_at_i0j1;
-	result = result + Interpolation_Coeff[3][0]*func_value_at_i1j1;
+	su2double result = 0;
+	result = result + Interpolation_Coeff[0][0] * func_value_at_i0j0;
+	result = result + Interpolation_Coeff[1][0] * func_value_at_i1j0;
+	result = result + Interpolation_Coeff[2][0] * func_value_at_i0j1;
+	result = result + Interpolation_Coeff[3][0] * func_value_at_i1j1;
 
 	return result;
 }
@@ -1712,7 +1702,7 @@ void CLookUpTable::TableLoadCFX(string filename) {
 				// Check that additional tables all adhere to the same x,y dimensions, otherwise throw an error
 				else if (x != set_x && y != set_y) {
 					cerr
-					<< "The encountered dimensions of the CFX table are not the same throughout. They should be; for this to work.\n";
+							<< "The encountered dimensions of the CFX table are not the same throughout. They should be; for this to work.\n";
 
 				}
 				//Go through each one of the variables of interest

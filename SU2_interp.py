@@ -15,9 +15,12 @@ def interp2d(qx, qy, qz):
     
     print 'Vandermonde\n', Vandermonde
     print
-    print 'Vandermonde inverse \n', Vinv
+    print 'Vandermonde inverse official \n', Vinv    
     Vinv = inverse(Vandermonde, 4)
+    print 'Vandermonde inverse Gauss \n', Vinv
     V22 = sp.copy(Vinv.T)
+    print 'Identity check'
+    print sp.dot(Vinv,Vandermonde)
     print 'Transpose official'
     print V22
     for i in range(3):
@@ -45,39 +48,48 @@ def inverse(V,size):
         for j in range(size):
             temp[i,j]=V[i,j];
         temp[i,size+i]=1;
-            
+    
     #Pivot the rows 
-    for i in range(size):
-        max_val = temp[i,i];
-        for j in range(i,size):
-            if abs(temp[j,j]) > max_val:
-                for k in range(size):
-                    d = temp[i,k]
-                    temp[i,k] = temp[j,k]
-                    temp[j,k] = d
-                                
     for k in range(size-1):
-        if temp[k,k] != 0:
-            for i in range(k+1,size):           
-                c = temp[i,k]/temp[k,k]
-                for j in range(2*size):
-                    temp[i,j] = temp[i,j] - temp[k,j]*c
-                    
+        max_idx = k
+        max_val = temp[k,k];
+        for j in range(k,size):
+            if abs(temp[j,k]) > max_val:
+                max_idx = j;
+                max_val = temp[j,k];
+        for j in range(2*size):
+                d = temp[k,j]
+                temp[k,j] = temp[max_idx,j]
+                temp[max_idx,j] = d                                
+        for i in range(k+1,size):           
+            c = temp[i,k]/temp[k,k]
+            for j in range(0,2*size):
+                temp[i,j] = temp[i,j] - temp[k,j]*c
+    
+    print "Reduced Echelon"                    
+    print temp[:,:4]
+    print "Reduced Echelon X"                    
+    print temp[:,4:]
                         
-    for k in range(size-1,-1,-1):
+    for k in range(size-1,0,-1):
         if temp[k,k] != 0:
-            for i in range(k-1,0,-1):            
+            for i in range(k-1,-1,-1):            
                     c = temp[i,k]/temp[k,k]
-                    for j in range(2*size):
+                    for j in range(0,2*size):
                         temp[i,j] = temp[i,j] - temp[k,j]*c             
-            
+    
+    print "Reduced Reduced Echelon"                    
+    print temp[:,:4]
+    print "Reduced Reduced Echelon X"                    
+    print temp[:,4:]
+        
+        
     for i in range(size):
         c = temp[i,i]
         for j in range(size):
             temp[i,j+size] = temp[i,j+size]/c
     
-    print 'Identity check'
-    print sp.dot(temp[:,4:],V)
+    
 
     return temp[:,4:]
     

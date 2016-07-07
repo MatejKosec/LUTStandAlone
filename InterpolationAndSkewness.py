@@ -16,7 +16,7 @@ import sys
 
 #Z = lambda x: sp.cos(x[0]-0.02) + sp.cos(x[1]+0.01) 
 Z = lambda x: (x[0]) + (x[1])
-InternalAngle = sp.deg2rad(80);
+InternalAngle = sp.deg2rad(60);
  
 quad_x = sp.array([10.0, 11.0, 11+sp.cos(InternalAngle), 10+sp.cos(InternalAngle) ])
 quad_y = sp.array([10.0, 10.0, 10+sp.sin(InternalAngle), 10+sp.sin(InternalAngle) ])
@@ -59,14 +59,28 @@ def plot(i,zz):
     plt.colorbar()
 
 
-plot(0,z_samples)
-plot(1,scipy_error)
-plot(2,su2_error)
-plt.figure(3)
-plt.plot(sp.sort(abs(scipy_error.reshape(100*100))), label='Scipy')
-plt.plot(sp.sort(abs(su2_error.reshape(100*100))),label='SU2')
-plt.legend()
-
+#plot(0,z_samples)
+#plot(1,scipy_error)
+#plot(2,su2_error)
+#plt.figure(3)
+#plt.plot(sp.sort(abs(scipy_error.reshape(100*100))), label='Scipy')
+#plt.plot(sp.sort(abs(su2_error.reshape(100*100))),label='SU2')
+#plt.legend()
+Test2 = sp.matrix(
+[[1, 0, 0, 0, 1, 0, 0, 0],\
+ [1, 0.63290000000000646, -3941.25, -2494.4171250000254, 0, 1, 0, 0],\
+ [1, 0, 1801.7300000000978, 0, 0, 0, 1, 0],\
+ [1, 0.63290000000000646, -2168.0899999999674, -1372.1841609999933, 0, 0, 0, 1]])
+print 'Test2'
+print sp.around(Test2,2)
+print 'Test2 inverse'
+print sp.linalg.inv(Test2[:,:4])
+print 'Elimination'
+GT2I =  SU2_interp.inverse(Test2,4)
+print 'Gauss inverse'
+print GT2I
+print 'Identity test'
+print sp.dot(GT2I,Test2[:,:4])
 
             
 
