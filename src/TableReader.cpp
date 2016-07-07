@@ -81,6 +81,7 @@ int main() {
 		istringstream in(line);
 		in>>P[i];
 		in>>T[i];
+		T[i]=T[i]+273.15;
 		i++;
 	}
 	fs.close();
@@ -133,6 +134,7 @@ int main() {
 		istringstream in(line);
 		in>>rho[i];
 		in>>T[i];
+		T[i]=T[i]+273.15;
 		i++;
 	}
 	fs.close();

@@ -88,9 +88,9 @@ CLookUpTable::CLookUpTable(char* Filename) {
 	cout << "Table_Density_Stations: " << Table_Density_Stations << endl;
 	cout << "Building HS_tree" << endl;
 	su2double* xtemp = new su2double[Table_Density_Stations
-			* Table_Pressure_Stations];
+																	 * Table_Pressure_Stations];
 	su2double* ytemp = new su2double[Table_Density_Stations
-			* Table_Pressure_Stations];
+																	 * Table_Pressure_Stations];
 	int* itemp = new int[Table_Density_Stations * Table_Pressure_Stations];
 	for (int i = 0; i < Table_Density_Stations; i++) {
 		for (int j = 0; j < Table_Pressure_Stations; j++) {
@@ -121,7 +121,7 @@ void CLookUpTable::free_KD_tree(KD_node* root) {
 struct KD_node* CLookUpTable::KD_Tree(su2double* x_values, su2double* y_values,
 		int* Flattened_Point_Index, int dim, int depth) {
 
-	struct KD_node *kdn = new KD_node;	//(KD_node*) malloc(sizeof(KD_node));;
+	struct KD_node *kdn = new KD_node;
 	kdn->x_values = x_values;
 	kdn->y_values = y_values;
 	kdn->Flattened_Point_Index = Flattened_Point_Index;
@@ -132,7 +132,6 @@ struct KD_node* CLookUpTable::KD_Tree(su2double* x_values, su2double* y_values,
 		int itemp = 0;
 		int swaps = 0; //for bubblesort
 		bool sorted = false;
-
 		if (depth % 2 == 0) {
 			//bubble sort by xvalues
 			while (not sorted) {
@@ -239,10 +238,10 @@ void CLookUpTable::NN_N_KD_Tree(int N, su2double thermo1, su2double thermo2,
 			best_dist[i] = dist;
 			Nearest_Neighbour_iIndex[i] =
 					root->Flattened_Point_Index[root->Branch_Dimension / 2]
-							/ Table_Pressure_Stations;
+																			/ Table_Pressure_Stations;
 			Nearest_Neighbour_jIndex[i] =
 					root->Flattened_Point_Index[root->Branch_Dimension / 2]
-							% Table_Pressure_Stations;
+																			% Table_Pressure_Stations;
 			i = N + 1;
 		}
 		i++;
@@ -616,13 +615,14 @@ void CLookUpTable::SetTDState_hs(su2double h, su2double s) {
 	}
 
 	iIndex = HS_tree->Flattened_Point_Index[HS_tree->Branch_Dimension / 2]
-			/ Table_Pressure_Stations;
+																					/ Table_Pressure_Stations;
 	jIndex = HS_tree->Flattened_Point_Index[HS_tree->Branch_Dimension / 2]
-			% Table_Pressure_Stations;
-	int N = 10;
+																					% Table_Pressure_Stations;
+	int N = 4;
 	Nearest_Neighbour_iIndex = new int[N];
 	Nearest_Neighbour_jIndex = new int[N];
 	su2double *best_dist = new su2double[N];
+	su2double b_dist =1E10;
 	for (int i = 0; i < N; i++) {
 		Nearest_Neighbour_iIndex[i] = -1;
 		Nearest_Neighbour_jIndex[i] = -1;
@@ -633,26 +633,122 @@ void CLookUpTable::SetTDState_hs(su2double h, su2double s) {
 	}
 
 	//Search the HS_tree
-	NN_N_KD_Tree(N, h, s, HS_tree, best_dist);
+	NN_N_KD_Tree(1,h, s, HS_tree, best_dist);
+
+	if (Nearest_Neighbour_iIndex[0]==(Table_Density_Stations-1))
+	{
+		Nearest_Neighbour_iIndex[0]--;
+	}
+	if (Nearest_Neighbour_jIndex[0]==(Table_Pressure_Stations-1))
+	{
+		Nearest_Neighbour_jIndex[0]--;
+	}
+
+	//Set the nearest neigbors to the adjacent i and j vertexes
+	iIndex = Nearest_Neighbour_iIndex[0];
+	jIndex = Nearest_Neighbour_jIndex[0];
+
+	Nearest_Neighbour_iIndex[1] = iIndex + 1;
+	Nearest_Neighbour_iIndex[2] = iIndex;
+	Nearest_Neighbour_iIndex[3] = iIndex + 1;
+	Nearest_Neighbour_jIndex[1] = jIndex;
+	Nearest_Neighbour_jIndex[2] = jIndex + 1;
+	Nearest_Neighbour_jIndex[3] = jIndex + 1;
+
+
+	//Select correct element based on first
+	su2double dx,dy,x00, y00, dx10, dx01, dx11, dy10, dy01, dy11;
+	bool BOTTOM, TOP, LEFT, RIGHT, found=false;
+	for (int k=0;k<4;k++)
+	{
+	Nearest_Neighbour_iIndex[0] = iIndex;
+	Nearest_Neighbour_jIndex[0] = jIndex;
+	Nearest_Neighbour_iIndex[1] = iIndex + 1;
+	Nearest_Neighbour_iIndex[2] = iIndex;
+	Nearest_Neighbour_iIndex[3] = iIndex + 1;
+	Nearest_Neighbour_jIndex[1] = jIndex;
+	Nearest_Neighbour_jIndex[2] = jIndex + 1;
+	Nearest_Neighbour_jIndex[3] = jIndex + 1;
+
+	x00  = ThermoTables[Nearest_Neighbour_iIndex[0]][Nearest_Neighbour_jIndex[0]].Enthalpy     ;
+	y00  = ThermoTables[Nearest_Neighbour_iIndex[0]][Nearest_Neighbour_jIndex[0]].Entropy      ;
+	dx   = h - x00;
+	dy   = s - y00;
+	dx01 = ThermoTables[Nearest_Neighbour_iIndex[2]][Nearest_Neighbour_jIndex[2]].Enthalpy -x00;
+	dy01 = ThermoTables[Nearest_Neighbour_iIndex[2]][Nearest_Neighbour_jIndex[2]].Entropy  -y00;
+	dx10 = ThermoTables[Nearest_Neighbour_iIndex[1]][Nearest_Neighbour_jIndex[1]].Enthalpy -x00;
+	dy10 = ThermoTables[Nearest_Neighbour_iIndex[1]][Nearest_Neighbour_jIndex[1]].Entropy  -y00;
+	dx11 = ThermoTables[Nearest_Neighbour_iIndex[3]][Nearest_Neighbour_jIndex[3]].Enthalpy -x00;
+	dy11 = ThermoTables[Nearest_Neighbour_iIndex[3]][Nearest_Neighbour_jIndex[3]].Entropy  -y00;
+
+	BOTTOM = (dy * dx10) < (dx * dy10);
+	TOP = ((dy - dy01) * (dx11 - dx01)) > ((dy11 - dy01) * (dx - dx01));
+	RIGHT = ((dx - dx10) * (dy11 - dy10)) > ((dx11 - dx10) * (dy - dy10));
+	LEFT = (dx * dy01) < (dx01 * dy);
+	//Check BOTTOM quad boundary
+	if(BOTTOM and !TOP)
+	{
+		if (jIndex!=0) jIndex--;
+	}
+	//Check RIGHT quad boundary
+	else if(RIGHT and !LEFT)
+	{
+		if (iIndex!=(Table_Density_Stations-1)) iIndex++;
+	}
+	//Check TOP quad boundary
+	else if(TOP and !BOTTOM)
+	{
+		if (jIndex!=(Table_Pressure_Stations-1)) jIndex++;
+	}
+	//Check LEFT quad boundary
+	else if(LEFT and !RIGHT)
+	{
+		if (iIndex!=0) iIndex--;
+	}
+
+	}
+	//Determine interpolation coefficients
+	su2double x = h;
+	su2double y = s;
+	Interp2D_ArbitrarySkewCoeff(x, y, "HS");
+
 
 	Entropy = s;
 	Enthalpy = h;
-	StaticEnergy = Interp2D_Inv_Dist(N, "StaticEnergy", best_dist);
-	Density = Interp2D_Inv_Dist(N, "Density", best_dist);
-	Pressure = Interp2D_Inv_Dist(N, "Pressure", best_dist);
-	SoundSpeed2 = Interp2D_Inv_Dist(N, "SoundSpeed2", best_dist);
-	Temperature = Interp2D_Inv_Dist(N, "Temperature", best_dist);
-	dPdrho_e = Interp2D_Inv_Dist(N, "dPdrho_e", best_dist);
-	dPde_rho = Interp2D_Inv_Dist(N, "dPde_rho", best_dist);
-	dTdrho_e = Interp2D_Inv_Dist(N, "dTdrho_e", best_dist);
-	dTde_rho = Interp2D_Inv_Dist(N, "dTde_rho", best_dist);
-	Cp = Interp2D_Inv_Dist(N, "Cp", best_dist);
-	Mu = Interp2D_Inv_Dist(N, "Mu", best_dist);
-	dmudrho_T = Interp2D_Inv_Dist(N, "dmudrho_T", best_dist);
-	dmudT_rho = Interp2D_Inv_Dist(N, "dmudT_rho", best_dist);
-	Kt = Interp2D_Inv_Dist(N, "Kt", best_dist);
-	dktdrho_T = Interp2D_Inv_Dist(N, "dktdrho_T", best_dist);
-	dktdT_rho = Interp2D_Inv_Dist(N, "dktdT_rho", best_dist);
+
+	StaticEnergy = Interp2D_lin("StaticEnergy");
+	Pressure = Interp2D_lin("Pressure");
+	Density = Interp2D_lin("Density");
+	SoundSpeed2 = Interp2D_lin("SoundSpeed2");
+	Temperature = Interp2D_lin("Temperature");
+	dPdrho_e = Interp2D_lin("dPdrho_e");
+	dPde_rho = Interp2D_lin("dPde_rho");
+	dTdrho_e = Interp2D_lin("dTdrho_e");
+	dTde_rho = Interp2D_lin("dTde_rho");
+	Cp = Interp2D_lin("Cp");
+	Mu = Interp2D_lin("Mu");
+	dmudrho_T = Interp2D_lin("dmudrho_T");
+	dmudT_rho = Interp2D_lin("dmudT_rho");
+	Kt = Interp2D_lin("Kt");
+	dktdrho_T = Interp2D_lin("dktdrho_T");
+	dktdT_rho = Interp2D_lin("dktdT_rho");
+
+	//	StaticEnergy = Interp2D_Inv_Dist(N, "StaticEnergy", best_dist);
+	//	Density = Interp2D_Inv_Dist(N, "Density", best_dist);
+	//	Pressure = Interp2D_Inv_Dist(N, "Pressure", best_dist);
+	//	SoundSpeed2 = Interp2D_Inv_Dist(N, "SoundSpeed2", best_dist);
+	//	Temperature = Interp2D_Inv_Dist(N, "Temperature", best_dist);
+	//	dPdrho_e = Interp2D_Inv_Dist(N, "dPdrho_e", best_dist);
+	//	dPde_rho = Interp2D_Inv_Dist(N, "dPde_rho", best_dist);
+	//	dTdrho_e = Interp2D_Inv_Dist(N, "dTdrho_e", best_dist);
+	//	dTde_rho = Interp2D_Inv_Dist(N, "dTde_rho", best_dist);
+	//	Cp = Interp2D_Inv_Dist(N, "Cp", best_dist);
+	//	Mu = Interp2D_Inv_Dist(N, "Mu", best_dist);
+	//	dmudrho_T = Interp2D_Inv_Dist(N, "dmudrho_T", best_dist);
+	//	dmudT_rho = Interp2D_Inv_Dist(N, "dmudT_rho", best_dist);
+	//	Kt = Interp2D_Inv_Dist(N, "Kt", best_dist);
+	//	dktdrho_T = Interp2D_Inv_Dist(N, "dktdrho_T", best_dist);
+	//	dktdT_rho = Interp2D_Inv_Dist(N, "dktdT_rho", best_dist);
 
 	if ((Density > Density_Table_Limits[1])
 			or (Density < Density_Table_Limits[0])) {
@@ -885,7 +981,7 @@ void CLookUpTable::SetTDState_rhoT(su2double rho, su2double T) {
 }
 
 su2double CLookUpTable::Interp2D_Inv_Dist(int N, std::string interpolant_var,
-su2double* dist) {
+		su2double* dist) {
 	su2double interp_result = 0;
 	//The function values to interpolate from
 	su2double *Interpolation_RHS = new su2double[N];
@@ -1002,10 +1098,10 @@ su2double* dist) {
 }
 inline void CLookUpTable::Gaussian_Inverse(int nDim) {
 
-//	su2double **temp = new su2double*[nDim];
-//	for (int i = 0; i < nDim; i++) {
-//		temp[i] = new su2double[2 * nDim];
-//	}
+	//	su2double **temp = new su2double*[nDim];
+	//	for (int i = 0; i < nDim; i++) {
+	//		temp[i] = new su2double[2 * nDim];
+	//	}
 	su2double temp[4][8];
 
 	for (int i = 0; i < nDim; i++) {
@@ -1254,11 +1350,11 @@ void CLookUpTable::Interp2D_ArbitrarySkewCoeff(su2double x, su2double y,
 		if (jIndex == 0) {
 			cerr << grid_var << ' ' << Nearest_Neighbour_iIndex[0] << ", "
 					<< Nearest_Neighbour_jIndex[0]
-					<< " interpolation point lies below the LUT\n";
+																			<< " interpolation point lies below the LUT\n";
 		} else {
 			cerr << grid_var << ' ' << Nearest_Neighbour_iIndex[0] << ", "
 					<< Nearest_Neighbour_jIndex[0]
-					<< " interpolation point lies below bottom boundary of selected quad\n";
+																			<< " interpolation point lies below bottom boundary of selected quad\n";
 		}
 	}
 	//Check RIGHT quad boundary
@@ -1267,11 +1363,11 @@ void CLookUpTable::Interp2D_ArbitrarySkewCoeff(su2double x, su2double y,
 		if (iIndex == (Table_Density_Stations - 1)) {
 			cerr << grid_var << ' ' << Nearest_Neighbour_iIndex[0] << ", "
 					<< Nearest_Neighbour_jIndex[0]
-					<< " interpolation point lies right of the LUT\n";
+																			<< " interpolation point lies right of the LUT\n";
 		} else {
 			cerr << grid_var << ' ' << Nearest_Neighbour_iIndex[0] << ", "
 					<< Nearest_Neighbour_jIndex[0]
-					<< " interpolation point lies to the right of the boundary of selected quad\n";
+																			<< " interpolation point lies to the right of the boundary of selected quad\n";
 		}
 	}
 	//Check TOP quad boundary
@@ -1280,11 +1376,11 @@ void CLookUpTable::Interp2D_ArbitrarySkewCoeff(su2double x, su2double y,
 		if (jIndex == Table_Pressure_Stations - 1) {
 			cerr << grid_var << ' ' << Nearest_Neighbour_iIndex[0] << ", "
 					<< Nearest_Neighbour_jIndex[0]
-					<< " interpolation point lies above the LUT\n";
+																			<< " interpolation point lies above the LUT\n";
 		} else {
 			cerr << grid_var << ' ' << Nearest_Neighbour_iIndex[0] << ", "
 					<< Nearest_Neighbour_jIndex[0]
-					<< +" interpolation point lies above the boundary of selected quad\n";
+																			<< +" interpolation point lies above the boundary of selected quad\n";
 		}
 	}
 	//Check LEFT quad boundary
@@ -1294,11 +1390,11 @@ void CLookUpTable::Interp2D_ArbitrarySkewCoeff(su2double x, su2double y,
 		if (iIndex == 0) {
 			cerr << grid_var << ' ' << Nearest_Neighbour_iIndex[0] << ", "
 					<< Nearest_Neighbour_jIndex[0]
-					<< " interpolation point lies left of the LUT\n";
+																			<< " interpolation point lies left of the LUT\n";
 		} else {
 			cerr << grid_var << ' ' << Nearest_Neighbour_iIndex[0] << ", "
 					<< Nearest_Neighbour_jIndex[0]
-					<< +" interpolation point lies to the left of the boundary of selected quad\n";
+																			<< +" interpolation point lies to the left of the boundary of selected quad\n";
 		}
 	}
 
@@ -1351,7 +1447,7 @@ void CLookUpTable::Interp2D_ArbitrarySkewCoeff(su2double x, su2double y,
 su2double CLookUpTable::Interp2D_lin(string interpolant_var) {
 	//The function values
 	su2double func_value_at_i0j0, func_value_at_i1j0, func_value_at_i0j1,
-			func_value_at_i1j1;
+	func_value_at_i1j1;
 	//For each case the values are filled differently
 	if (interpolant_var == "StaticEnergy") {
 		func_value_at_i0j0 =
@@ -1702,7 +1798,7 @@ void CLookUpTable::TableLoadCFX(string filename) {
 				// Check that additional tables all adhere to the same x,y dimensions, otherwise throw an error
 				else if (x != set_x && y != set_y) {
 					cerr
-							<< "The encountered dimensions of the CFX table are not the same throughout. They should be; for this to work.\n";
+					<< "The encountered dimensions of the CFX table are not the same throughout. They should be; for this to work.\n";
 
 				}
 				//Go through each one of the variables of interest
@@ -2129,6 +2225,7 @@ void CLookUpTable::TableLoadCFX(string filename) {
 									var_steps = ((set_x * set_y) - (j * set_x + i)); //bug fixed: detect end of table
 								for (int z = 0; z < var_steps; z++) {
 									in >> inp[z];
+									inp[z] = inp[z] + 273.150; //convert celsius to Kelvin
 								}
 							}
 							ThermoTables[i][j].Temperature = inp[(j * set_x + i) % 10];
