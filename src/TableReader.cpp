@@ -42,7 +42,7 @@ int main() {
 	fs.open(gridfile, fstream::out |fstream::trunc);
 	fs<<"";
 	fs.close();
-	LUT2.TableDump(gridfile);
+	LUT2.LookUpTable_Print_To_File(gridfile);
 
 	//LUT2.SetTDState_rhoe(85, 570000);
 
