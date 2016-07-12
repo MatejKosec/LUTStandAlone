@@ -22,7 +22,8 @@ using namespace std;
 
 int main() {
 
-	char* tablefile= (char*) "AIR/air.rgp";
+	char* tablefile= (char*) "MDM/MDM.rgp";
+	//char* tablefile= (char*) "AIR/air.rgp";
 	char* gridfile = (char*) "mesh.dat";
 
 	char* outfile;
