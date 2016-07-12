@@ -22,7 +22,7 @@ using namespace std;
 
 int main() {
 
-	char* tablefile= (char*) "CO2.rgp";
+	char* tablefile= (char*) "AIR/air.rgp";
 	char* gridfile = (char*) "mesh.dat";
 
 	char* outfile;
@@ -81,7 +81,6 @@ int main() {
 		istringstream in(line);
 		in>>P[i];
 		in>>T[i];
-		//T[i]=T[i]+273.15;
 		i++;
 	}
 	fs.close();
@@ -134,7 +133,6 @@ int main() {
 		istringstream in(line);
 		in>>rho[i];
 		in>>T[i];
-		//T[i]=T[i]+273.15;
 		i++;
 	}
 	fs.close();

@@ -70,7 +70,7 @@ class RandomSamples(ThermoData):
         self.dPde_rho     = randoms[:,8];
         self.dTdrho_e     = randoms[:,9];
         self.dTde_rho     = randoms[:,10];
-        self.Temperature  = randoms[:,11]+273.15;
+        self.Temperature  = randoms[:,11];
         self.StaticEnergy = randoms[:,12];
         self.Enthalpy     = randoms[:,13];
         print 'DONE Loading random verification data'
