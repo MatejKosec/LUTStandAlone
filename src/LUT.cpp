@@ -77,7 +77,7 @@ CLookUpTable::CLookUpTable() {
 	Table_Density_Stations = 0;
 }
 
-CLookUpTable::CLookUpTable(char* Filename) {
+CLookUpTable::CLookUpTable(char* Filename, bool dimensional) {
 	ThermoTables = NULL;
 	LookUpTable_Load_CFX(Filename, true);
 	Remove_Two_Phase_Region_CFX_Table(true);
@@ -1868,32 +1868,32 @@ void CLookUpTable::Remove_Two_Phase_Region_CFX_Table(bool is_not_two_phase) {
 					Indexes_of_two_phase[i][j]=0;
 			}
 		}
-	//Edge detection going down
-	for (int j = 0; j < Table_Pressure_Stations; j++) {
-		for (int i = 0; i < Table_Density_Stations - 1; i++) {
-			if (abs(
-					ThermoTables[i + 1][j].Enthalpy - ThermoTables[i][j].Enthalpy)
-					> 0.1 * ThermoTables[i + 1][j].Enthalpy) {
-				Indexes_of_two_phase[i+1][j] = -10;
-			}
-		}
-	}
-	//Edge detection going up
-	for (int j = 0; j < Table_Pressure_Stations; j++) {
-		for (int i = Table_Density_Stations - 1; i > 0; i--) {
-			if ((ThermoTables[i][j].Enthalpy - ThermoTables[i - 1][j].Enthalpy)
-					> 1.1 * ThermoTables[i - 1][j].Enthalpy) {
-				Indexes_of_two_phase[i][j] = -10;
-			}
-		}
-	}
-	for (int i =0;i<Table_Density_Stations; i++) {
-			for (int j = 0; j < Table_Pressure_Stations; j++) {
-				cout<<Indexes_of_two_phase[i][j]<<", ";
-		}
-		cout<<endl;
-	}
-
+//	//Edge detection going down
+//	for (int j = 0; j < Table_Pressure_Stations; j++) {
+//		for (int i = 0; i < Table_Density_Stations - 1; i++) {
+//			if (abs(
+//					ThermoTables[i + 1][j].Enthalpy - ThermoTables[i][j].Enthalpy)
+//					> 0.1 * ThermoTables[i + 1][j].Enthalpy) {
+//				Indexes_of_two_phase[i+1][j] = -10;
+//			}
+//		}
+//	}
+//	//Edge detection going up
+//	for (int j = 0; j < Table_Pressure_Stations; j++) {
+//		for (int i = Table_Density_Stations - 1; i > 0; i--) {
+//			if ((ThermoTables[i][j].Enthalpy - ThermoTables[i - 1][j].Enthalpy)
+//					> 1.1 * ThermoTables[i - 1][j].Enthalpy) {
+//				Indexes_of_two_phase[i][j] = -10;
+//			}
+//		}
+//	}
+//	for (int i =0;i<Table_Density_Stations; i++) {
+//			for (int j = 0; j < Table_Pressure_Stations; j++) {
+//				cout<<Indexes_of_two_phase[i][j]<<", ";
+//		}
+//		cout<<endl;
+//	}
+//
 
 
 	delete[] SaturationTables;

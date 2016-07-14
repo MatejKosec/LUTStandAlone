@@ -71,6 +71,10 @@ class CLookUpTable {
 protected:
 	CThermoList **ThermoTables;/*!< \brief The 2D array used to hold the values of thermodynamic properties from the LUT*/
 	CThermoList *SaturationTables;/*!< \brief The 1D array array of thermo porperties nn the saturation line, for q=1*/
+	su2double Pressure_Reference_Value;
+	su2double Density_Reference_Value;
+	su2double Temperature_Reference_Value;
+	su2double Velocity_Reference_Value;
 
 	su2double Interpolation_Matrix[4][4]; /*!< \brief The (Vandermonde) matrix for the interpolation (bilinear) */
 	su2double Interpolation_Coeff[4][4]; /*!< \brief Used to hold inverse of Interpolation_Matrix, and solution vector */
@@ -130,7 +134,7 @@ public:
 	 * \brief Constructor the LUT by reading it in from a file.
 	 * \param[in] Filename - The name of the (.rgp) file from which to load the table
 	 */
-	CLookUpTable(char* Filename);
+	CLookUpTable(char* Filename, bool dimensional);
 
 	/*!
 	 * \brief Destructor of the class, primarily handling the dealloc of the KD_trees and LUT itself.

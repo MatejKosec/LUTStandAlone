@@ -52,11 +52,11 @@ def inverse(V,size):
     #Pivot the rows 
     for k in range(size-1):
         max_idx = k
-        max_val = temp[k,k];
+        max_val = abs(temp[k,k]);
         for j in range(k,size):
             if abs(temp[j,k]) > max_val:
                 max_idx = j;
-                max_val = temp[j,k];
+                max_val = abs(temp[j,k]);
         for j in range(2*size):
                 d = temp[k,j]
                 temp[k,j] = temp[max_idx,j]
@@ -67,9 +67,9 @@ def inverse(V,size):
                 temp[i,j] = temp[i,j] - temp[k,j]*c
     
     print "Reduced Echelon"                    
-    print temp[:,:4]
+    print temp[:,:size]
     print "Reduced Echelon X"                    
-    print temp[:,4:]
+    print temp[:,size:]
                         
     for k in range(size-1,0,-1):
         if temp[k,k] != 0:
@@ -79,9 +79,9 @@ def inverse(V,size):
                         temp[i,j] = temp[i,j] - temp[k,j]*c             
     
     print "Reduced Reduced Echelon"                    
-    print temp[:,:4]
+    print temp[:,:size]
     print "Reduced Reduced Echelon X"                    
-    print temp[:,4:]
+    print temp[:,size:]
         
         
     for i in range(size):
@@ -91,7 +91,7 @@ def inverse(V,size):
     
     
 
-    return temp[:,4:]
+    return temp[:,size:]
     
     
     
