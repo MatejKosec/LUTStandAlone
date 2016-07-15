@@ -53,11 +53,8 @@ class ThermoData(object):
         #self.dktdrho_T    = self.data[:,16];
         #self.dktdT_rho    = self.data[:,17];
         return 
-
-class RandomSamples(ThermoData):
-    
-    def __init__(self,filename):
-        print 'Loading random verification data'
+        
+    def load_FP_output(self, filename):
         randoms = sp.genfromtxt(filename, skip_header=1)
         self.Density      = randoms[:,0];
         self.Pressure     = randoms[:,1];
@@ -73,6 +70,14 @@ class RandomSamples(ThermoData):
         self.Temperature  = randoms[:,11];
         self.StaticEnergy = randoms[:,12];
         self.Enthalpy     = randoms[:,13];
+        return
+        
+
+class RandomSamples(ThermoData):
+    
+    def __init__(self,filename):
+        print 'Loading random verification data'
+        self.load_FP_output(filename);
         print 'DONE Loading random verification data'
         
         #Prepare the input files
@@ -144,6 +149,27 @@ class PRGrid(ThermoData):
         
     def __init__(self, filename):
         self.load_data(filename);
+        self.P_dim = sp.where((self.Density-self.Density[0])!=0)[0][0]
+        self.D_dim = len(self.Density)/self.P_dim
+        print 'P-RHO dimensions: %i by %i'%(self.P_dim, self.D_dim);
+
+    def plot_mesh(self,thermo_x,thermo_y):
+        x = getattr(self,thermo_x)
+        y = getattr(self,thermo_y)
+        
+        for i in range(self.P_dim):
+            plt.plot(x[i:][::self.P_dim], y[i:][::self.P_dim], 'c-', alpha=0.3);
+        for i in range(self.D_dim):
+            plt.plot(x[i*self.P_dim:(i+1)*self.P_dim], y[i*self.P_dim:(i+1)*self.P_dim], 'c-', alpha=0.3);
+
+class PRGridSkewed(ThermoData):
+    
+    meshfile=False;
+    P_dim=0;
+    D_dim=0;
+        
+    def __init__(self, filename):
+        self.load_FP_output(filename)
         self.P_dim = sp.where((self.Density-self.Density[0])!=0)[0][0]
         self.D_dim = len(self.Density)/self.P_dim
         print 'P-RHO dimensions: %i by %i'%(self.P_dim, self.D_dim);
