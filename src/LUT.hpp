@@ -1,12 +1,8 @@
 #define su2double double
 #include <string>
-/*!
- * \brief The struct used for the KD_tree implementation, each KD_node represents a tree branch.
- * The KD_tree is 2D, as all SetTD state functions are based on thermo-pairs.
- * All other variable values at a given location in the tree can be obtained
- * by using the stored indexes.
- *
- */
+
+using namespace std;
+
 struct KD_node {
 	int Branch_Splitting_Direction, /*!< \brief The depth of the branch within the tree, even numbers are split in x, odd in y */
 	Branch_Dimension, /*!< \brief The number of points contained on the branch */
@@ -17,14 +13,25 @@ struct KD_node {
 	KD_node* lower; /*!< \brief The tree-branch on the next level of the tree containing lower 50 percentile. Based on x_values for branches of even depth and y_values for odd. */
 };
 
+
 /*!
- * \class CThermoList
- * \brief holds the thermodynamic variables associated with a particular table index
- * \author: M. Kosec, A.Rubino, S.Vitale
+ * \class CLookUpTable
+ * \brief Child class for defining ideal gas model.
+ * \author: A. Rubino, S.Vitale.
  * \version 4.1.2 "Cardinal"
  */
-class CThermoList {
-public:
+class CLookUpTable {
+
+protected:
+	int rank;
+	bool skewed_linear_table;/*!< \brief Boolean to check for the type P-rho sample domain*/
+	bool LUT_Debug_Mode;/*!< \brief If true, master node prints errors of points outside LUT*/
+	su2double Pressure_Reference_Value;
+	su2double Density_Reference_Value;
+	su2double Temperature_Reference_Value;
+	su2double Velocity_Reference_Value;
+	su2double Energy_Reference_Value;
+
 	su2double StaticEnergy, /*!< \brief Internal Energy. */
 	Entropy, /*!< \brief Entropy. */
 	Enthalpy, /*!< \brief Enthalpy required as separate variable for use in HS tree. */
@@ -44,63 +51,32 @@ public:
 	dktdrho_T, /*!< \brief Fluid derivative DktDrho_T.  */
 	dktdT_rho; /*!< \brief Fluid derivative DktDT_rho. */
 
-	/*!
-	 * \brief Constructor of the class.
-	 */
-	CThermoList(void);
-
-	/*!
-	 * \brief Destructor of the class.
-	 */
-	virtual ~CThermoList(void);
-	/*!
-	 * \brief Print the thermodynamic variables contained in the instance (e.g. to read-out verification data)
-	 */
-	void CThermoList_Print(void);
-
-};
-
-/*!
- * \class CLookUpTable
- * \brief Child class of CFluidModel which uses thermodynamic variables read in from a table in .rgp format
- * \author: M.Kosec, A. Rubino, S.Vitale
- * \version 4.1.2 "Cardinal"
- */
-class CLookUpTable {
-
-protected:
-	CThermoList **ThermoTables;/*!< \brief The 2D array used to hold the values of thermodynamic properties from the LUT*/
-	CThermoList *SaturationTables;/*!< \brief The 1D array array of thermo porperties nn the saturation line, for q=1*/
-	su2double Pressure_Reference_Value;
-	su2double Density_Reference_Value;
-	su2double Temperature_Reference_Value;
-	su2double Velocity_Reference_Value;
+	su2double
+	**ThermoTables_StaticEnergy, /*!< \brief Internal Energy look up table values. */
+	**ThermoTables_Entropy, /*!< \brief Entropy look up table values. */
+	**ThermoTables_Enthalpy, /*!< \brief Enthalpy required as separate variable for use in HS tree look up table values. */
+	**ThermoTables_Density, /*!< \brief Density look up table values. */
+	**ThermoTables_Pressure, /*!< \brief Pressure look up table values. */
+	**ThermoTables_SoundSpeed2, /*!< \brief The speed of sound squared look up table values. */
+	**ThermoTables_Temperature, /*!< \brief Temperature look up table values. */
+	**ThermoTables_dPdrho_e, /*!< \brief Fluid derivative DpDd_e look up table values. */
+	**ThermoTables_dPde_rho, /*!< \brief Fluid derivative DpDe_d look up table values. */
+	**ThermoTables_dTdrho_e, /*!< \brief Fluid derivative DTDd_e look up table values. */
+	**ThermoTables_dTde_rho, /*!< \brief Fluid derivative DTDe_d look up table values. */
+	**ThermoTables_Cp, /*!< \brief Specific Heat Capacity at constant pressure look up table values. */
+	**ThermoTables_Mu, /*!< \brief Laminar Viscosity look up table values. */
+	**ThermoTables_dmudrho_T, /*!< \brief Fluid derivative DmuDrho_T look up table values. */
+	**ThermoTables_dmudT_rho, /*!< \brief Fluid derivative DmuDT_rho look up table values. */
+	**ThermoTables_Kt, /*!< \brief Thermal Conductivity look up table values. */
+	**ThermoTables_dktdrho_T, /*!< \brief Fluid derivative DktDrho_T look up table values. */
+	**ThermoTables_dktdT_rho; /*!< \brief Fluid derivative DktDT_rho look up table values. */
 
 	su2double Interpolation_Matrix[4][4]; /*!< \brief The (Vandermonde) matrix for the interpolation (bilinear) */
 	su2double Interpolation_Coeff[4][4]; /*!< \brief Used to hold inverse of Interpolation_Matrix, and solution vector */
-	short iIndex, jIndex; /*!< \brief The i,j indexes (rho, P) of the position of the table search. Can be used as a restart for next search.*/
+	int LowerI, UpperI, middleI, LowerJ, UpperJ, middleJ;/*!< \brief The i,j indexes (rho, P) of the position of the table search. Can be used as a restart for next search.*/
 	int Table_Pressure_Stations;/*!< \brief The pressure dimensions of the table */
 	int Table_Density_Stations; /*!< \brief The density dimensions of the table */
 	KD_node *HS_tree; /*!< \brief The pointer to the root of the KD tree for the HS thermo-pair.*/
-	su2double StaticEnergy, /*!< \brief Internal Energy. */
-	Entropy, /*!< \brief Entropy. */
-	Enthalpy, /*!< \brief Enthalpy required as separate variable for use in HS tree. */
-	Density, /*!< \brief Density. */
-	Pressure, /*!< \brief Pressure. */
-	SoundSpeed2, /*!< \brief SpeedSound. */
-	Temperature, /*!< \brief Temperature. */
-	dPdrho_e, /*!< \brief Fluid derivative DpDd_e. */
-	dPde_rho, /*!< \brief Fluid derivative DpDe_d. */
-	dTdrho_e, /*!< \brief Fluid derivative DTDd_e. */
-	dTde_rho, /*!< \brief Fluid derivative DTDe_d. */
-	Cp, /*!< \brief Specific Heat Capacity at constant pressure. */
-	Mu, /*!< \brief Laminar Viscosity. */
-	dmudrho_T, /*!< \brief Fluid derivative DmuDrho_T */
-	dmudT_rho, /*!< \brief Fluid derivative DmuDT_rho. */
-	Kt, /*!< \brief Thermal Conductivity. */
-	dktdrho_T, /*!< \brief Fluid derivative DktDrho_T.  */
-	dktdT_rho; /*!< \brief Fluid derivative DktDT_rho. */
-
 	su2double StaticEnergy_Table_Limits[2]; /*!< \brief The [min,max] values of the StaticEnergy values in the LUT */
 	su2double Entropy_Table_Limits[2]; /*!< \brief The [min,max] values of the Entropy values in the LUT */
 	su2double Enthalpy_Table_Limits[2]; /*!< \brief The [min,max] values of the Enthalpy values in the LUT */
@@ -125,16 +101,13 @@ protected:
 
 public:
 
-	/*!
-	 * \brief default Constructor of the class.
-	 */
-	CLookUpTable(void);
+
 
 	/*!
 	 * \brief Constructor the LUT by reading it in from a file.
 	 * \param[in] Filename - The name of the (.rgp) file from which to load the table
 	 */
-	CLookUpTable(char* Filename, bool dimensional);
+	CLookUpTable(string Filename);
 
 	/*!
 	 * \brief Destructor of the class, primarily handling the dealloc of the KD_trees and LUT itself.
@@ -173,6 +146,7 @@ public:
 	 * \param[in] root    - pointer of the KD_tree branch from which to start the search (recursively, typically root e.g this->HS_tree)
 	 * \param[in] best    - a shared dynamic array of the N best distances encountered in the search.
 	 */
+
 	void N_Nearest_Neighbours_KD_Tree(int N, su2double thermo1, su2double thermo2,
 			KD_node *root, su2double* best_dist);
 
@@ -181,6 +155,12 @@ public:
 	 * \param[in] rho - input Density (must be within LUT limits)
 	 * \param[in] e   - input StaticEnergy (must be within LUT limits)
 	 */
+	void Search_NonEquispaced_Rho_Index(su2double rho);
+	void Search_NonEquispaced_P_Index(su2double P);
+	void Search_Linear_Skewed_Table(su2double x, su2double P, su2double **ThermoTables_X);
+	void Search_i_for_X_given_j(su2double x, su2double y, su2double **ThermoTables_X, su2double **ThermoTables_Y );
+	void Search_j_for_Y_given_i(su2double x, su2double y, su2double **ThermoTables_X, su2double **ThermoTables_Y );
+	void Zig_Zag_Search(su2double x, su2double y, su2double **ThermoTables_X, su2double **ThermoTables_Y);
 	void SetTDState_rhoe(su2double rho, su2double e);
 
 	/*!
@@ -247,41 +227,28 @@ public:
 	 * \param[in] grid_var - the pair of thermodynamic variables which define the grid i.e. the interpolation quad. (e.g. RHOE for rhoe)
 	 */
 
-	void Interpolate_2D_Bilinear_Arbitrary_Skew_Coeff(su2double x, su2double y,
-			std::string grid_var);
+	void Interpolate_2D_Bilinear_Arbitrary_Skew_Coeff(su2double x, su2double y, su2double **ThermoTables_X, su2double **ThermoTables_Y, std::string grid_var);
+
 
 	/*!
 	 * \brief Use the interpolation coefficients to interpolate a given thermodynamic variable property. (Must calculate the interpolation coefficients first)
 	 * \param[in] interpolant_var - the name of the variable to be interpolated e.g Density
 	 */
 
-	su2double Interpolate_2D_Bilinear(std::string interpolant_var);
-
-	/*!
-	 * \brief Use the inverse distances in a Shephard's interpolation.
-	 * This was initially used for the HS tree but did not produce satisfactory accuracy
-	 * \param[in] N - the number of points involved in the interpolation, typically neighbors found using KD_tree
-	 * \param[in] interpolant_var - the distance between the sample points and the desired points. May be raised to desired power.
-	 */
-
-	su2double Interp2D_Inv_Dist(int N, std::string interpolant_var,
-			su2double* dist);
-	/*!
-		 * \brief Alter the loaded table such that that the two phase region is replaced.
-		 * Instead of the physically accurate values, the new values for the P-rho combination
-		 * are to be extrapolated from the superheated vapor region. The saturation values
-		 * are extracted from the CFX table.
-		 * \param[in] filename - the name of the CFX file containing the table
-		 * \param[in] is_two_phase - (NOT IMPLEMENTED) keep both the vapor and 2phase tables,
-		 */
-	void Remove_Two_Phase_Region_CFX_Table(bool is_not_two_phase);
+	su2double Interpolate_2D_Bilinear(su2double ** ThermoTables_Z);
+	void Check_Interpolated_PRHO_Limits(std::string interpolation_case);
 
 	/*!
 	 * \brief Load the LUT table from a CFX file format. X axis must be Density, and Y axis pressure. Equal spacing not required.
 	 * \param[in] filename - the name of the CFX file containing the table
 	 */
 
-	void LookUpTable_Load_CFX(std::string filename, bool read_saturation_properties);
+	void LookUpTable_Malloc();
+	void LookUpTable_Load_CFX(std::string filename);
+	void CFX_Import_Table_By_Number(ifstream *tab, su2double **ThermoTables_X, bool skip_prho);
+	void LookUpTable_Load_DAT(std::string filename);
+	void Find_Table_Limits();
+	void NonDimensionalise_Table_Values();
 
 	/*!
 	 * \brief Print the table to a text file (for external inspection)
@@ -300,5 +267,3 @@ public:
 	void RecordState(char* file);
 
 };
-
-

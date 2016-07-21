@@ -55,7 +55,7 @@ class ThermoData(object):
         return 
         
     def load_FP_output(self, filename):
-        randoms = sp.genfromtxt(filename, skip_header=1)
+        randoms = sp.genfromtxt(filename, skip_header=2)
         self.Density      = randoms[:,0];
         self.Pressure     = randoms[:,1];
         self.SoundSpeed2  = randoms[:,2]**2;
@@ -90,6 +90,32 @@ class RandomSamples(ThermoData):
         sp.savetxt("hs_in.dat"  ,sp.column_stack((self.Enthalpy,self.Entropy)), delimiter='\t')        
         print 'DONE Preparing input files...'
         return
+
+
+class RestartSamples(object):
+    Density=None;
+    Pressure=None;
+    Temperature=None;
+    restarts = None;
+    
+    def __init__(self,filename, dim='2D'):
+        restarts = sp.genfromtxt(filename, skip_header=2)
+        if dim == '2D':
+            self.Density      = restarts[:,3];
+            self.Pressure     = restarts[:,9];
+            self.Temperature  = restarts[:,10];        
+        elif dim == '3D':
+            self.Density      = restarts[:,4];
+            self.Pressure     = restarts[:,9];
+            self.Temperature  = restarts[:,10];        
+        self.restarts=restarts;
+            
+        print 'Restart points: ', len(self.Density)
+        return;
+        
+    def plot_restarts(self, scatter_x ='Density', scatter_y='Pressure'):
+        plt.scatter(getattr(self,scatter_x), getattr(self,scatter_y));
+        return;
 
 
         

@@ -50,7 +50,7 @@ int main() {
 
 
 
-	CLookUpTable LUT2 = CLookUpTable(tablefile, true);
+	CLookUpTable LUT2 = CLookUpTable(tablefile);
 
 	fs.open(gridfile, fstream::out |fstream::trunc);
 	fs<<"";
