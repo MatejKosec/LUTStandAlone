@@ -49,27 +49,47 @@ class ThermoData(object):
         self.Mu           = self.data[:,12];
         #self.dmudrho_T    = self.data[:,13];
         #self.dmudT_rho    = self.data[:,14];
-        self.Kt           = self.data[:,15];
+        self.Kt           = self.data[:,13];
         #self.dktdrho_T    = self.data[:,16];
         #self.dktdT_rho    = self.data[:,17];
         return 
         
     def load_FP_output(self, filename):
-        randoms = sp.genfromtxt(filename, skip_header=2)
-        self.Density      = randoms[:,0];
-        self.Pressure     = randoms[:,1];
-        self.SoundSpeed2  = randoms[:,2]**2;
-        self.Cp           = randoms[:,3];
-        self.Entropy      = randoms[:,4];
-        self.Mu           = randoms[:,5];
-        self.Kt           = randoms[:,6];
-        self.dPdrho_e     = randoms[:,7];
-        self.dPde_rho     = randoms[:,8];
-        self.dTdrho_e     = randoms[:,9];
-        self.dTde_rho     = randoms[:,10];
-        self.Temperature  = randoms[:,11];
-        self.StaticEnergy = randoms[:,12];
-        self.Enthalpy     = randoms[:,13];
+        self.data = sp.genfromtxt(filename, skip_header=2)
+        self.Density      = self.data[:,0];
+        self.Pressure     = self.data[:,1];
+        self.SoundSpeed2  = self.data[:,2]**2;
+        self.Cp           = self.data[:,3];
+        self.Entropy      = self.data[:,4];
+        self.Mu           = self.data[:,5];
+        self.Kt           = self.data[:,6];
+        self.dPdrho_e     = self.data[:,7];
+        self.dPde_rho     = self.data[:,8];
+        self.dTdrho_e     = self.data[:,9];
+        self.dTde_rho     = self.data[:,10];
+        self.Temperature  = self.data[:,11];
+        self.StaticEnergy = self.data[:,12];
+        self.Enthalpy     = self.data[:,13];
+        return;
+    def load_rand_output(self, filename):
+        self.data = sp.genfromtxt(filename, skip_header=1)
+        self.Density      = self.data[:,0];
+        self.Pressure     = self.data[:,1];
+        self.SoundSpeed2  = self.data[:,2]**2;
+        self.Cp           = self.data[:,3];
+        self.Entropy      = self.data[:,4];
+        self.Mu           = self.data[:,5];
+        self.Kt           = self.data[:,6];
+        self.dPdrho_e     = self.data[:,7];
+        self.dPde_rho     = self.data[:,8];
+        self.dTdrho_e     = self.data[:,9];
+        self.dTde_rho     = self.data[:,10];
+        self.Temperature  = self.data[:,11];
+        self.StaticEnergy = self.data[:,12];
+        self.Enthalpy     = self.data[:,13];
+        
+    def plot_2D(self, axis_x, axis_y):
+        plt.plot(getattr(self, axis_x), getattr(self,axis_y),'ro',alpha=0.1);
         return
         
 
@@ -77,7 +97,7 @@ class RandomSamples(ThermoData):
     
     def __init__(self,filename):
         print 'Loading random verification data'
-        self.load_FP_output(filename);
+        self.load_rand_output(filename);
         print 'DONE Loading random verification data'
         
         #Prepare the input files
@@ -113,13 +133,14 @@ class RestartSamples(object):
         print 'Restart points: ', len(self.Density)
         return;
         
-    def plot_restarts(self, scatter_x ='Density', scatter_y='Pressure'):
-        plt.scatter(getattr(self,scatter_x), getattr(self,scatter_y));
+    def plot_restarts(self, scatter_x ='Density', scatter_y='Pressure'):        
+        plt.plot(getattr(self,scatter_x), getattr(self,scatter_y),'.',c='#B2FF66',label='PR_gas Restart');
         return;
 
 
         
 class SciPy_InterpolatedData(ThermoData):
+    median_ERR = 1;
     
 
     def __init__(self, which_case, LUT, RandomSamples, interp_type):
@@ -162,6 +183,7 @@ class SciPy_InterpolatedData(ThermoData):
 class SU2_InterpolatedData(ThermoData):
     name='';
     data=False;
+    median_ERR = 1;
     
     def __init__(self, filename):
         self.load_data(filename);
@@ -205,9 +227,12 @@ class PRGridSkewed(ThermoData):
         y = getattr(self,thermo_y)
         
         for i in range(self.P_dim):
-            plt.plot(x[i:][::self.P_dim], y[i:][::self.P_dim], 'c-', alpha=0.3);
+            plt.plot(x[i:][::self.P_dim], y[i:][::self.P_dim], 'k-', alpha=0.5);
         for i in range(self.D_dim):
-            plt.plot(x[i*self.P_dim:(i+1)*self.P_dim], y[i*self.P_dim:(i+1)*self.P_dim], 'c-', alpha=0.3);
+            plt.plot(x[i*self.P_dim:(i+1)*self.P_dim], y[i*self.P_dim:(i+1)*self.P_dim], 'k-', alpha=0.5);    
+        plt.grid(which='both')
+           
+    
 
 class RefinementLevel(object):
    cases=False;
@@ -244,6 +269,64 @@ class RefinementLevel(object):
    def load_results_SciPy(self,interp_kind='linear'):
        self.SciPy={i:SciPy_InterpolatedData(i,self.LUT, self.RandomSamples, \
        interp_kind ) for i in self.cases};
+      
+   def get_REL_ERR_SU2(self,which_case):
+        i=0;
+        thermo1 = self.select[which_case][0]
+        thermo2 = self.select[which_case][1]
+        self.REL_ERR = 0;
+        for v in self.variables[sp.where\
+        ((self.variables!=thermo1) * (self.variables!=thermo2))]:
+            i=i+1;
+            self.REL_ERR = self.REL_ERR + \
+            ((getattr(self.SU2[which_case],v)-getattr(self.RandomSamples,v))/\
+            (getattr(self.RandomSamples,v)))**2;
+        self.REL_ERR = sp.sqrt(self.REL_ERR)/i
+        setattr(self.SU2[which_case],"median_ERR",sp.median(self.REL_ERR));
+        return
+    
+   def get_REL_ERR_SciPy(self,which_case):
+        i=0;
+        thermo1 = self.select[which_case][0]
+        thermo2 = self.select[which_case][1]
+        self.REL_ERR = 0;
+        for v in self.variables[sp.where\
+        ((self.variables!=thermo1) * (self.variables!=thermo2))]:
+            i=i+1;
+            self.REL_ERR = self.REL_ERR + \
+            ((getattr(self.SciPy[which_case],v)-getattr(self.RandomSamples,v))/\
+            (getattr(self.RandomSamples,v)))**2;
+        self.REL_ERR = sp.sqrt(self.REL_ERR)/i
+        setattr(self.SciPy[which_case],"median_ERR",sp.median(self.REL_ERR));
+        return
+       
+       
+   def plot_REL_ERR_SU2(self,which_case):
+        i=0;
+        thermo1 = self.select[which_case][0]
+        thermo2 = self.select[which_case][1]
+        get_REL_ERR_SU2(self,which_case)
+        
+        print 'Median error SU2', sp.median(self.REL_ERR)
+        print 'Mean error SU2', sp.mean(self.REL_ERR)
+        print 'Max error SU2', max(self.REL_ERR)
+        print 'Min error SU2', min(self.REL_ERR)
+        x = getattr(self.SU2[which_case],thermo1)
+        y = getattr(self.SU2[which_case],thermo2)
+        #trusted_values = sp.where(self.REL_ERR>0<0.9*max(self.REL_ERR))
+        self.REL_ERR = self.REL_ERR[trusted_values]
+        x = x[trusted_values]
+        y = y[trusted_values]
+        scat=plt.scatter(x,y,c=self.REL_ERR, s=1)                
+        plt.grid(which='both')
+        scat.set_array(self.REL_ERR)        
+        plt.colorbar(scat)
+        plt.xlim((min(x)*0.95,max(x)*1.05));
+        plt.ylim((min(y)*0.95,max(y)*1.05));
+        print 'x argmax %i , x_val: %f ' %(sp.argmax(self.REL_ERR),x[sp.argmax(self.REL_ERR)])
+        print 'y argmax %i , y_val: %f ' %(sp.argmax(self.REL_ERR),y[sp.argmax(self.REL_ERR)])
+        return;
+       
    
    def plot_hist_compare(self,which_case):
         plt.ylabel('Percentage of points')
@@ -273,9 +356,10 @@ class RefinementLevel(object):
             self.REL_ERR = self.REL_ERR + \
             ((getattr(self.SU2[which_case],v)-getattr(self.RandomSamples,v))/\
             (getattr(self.RandomSamples,v)))**2;
-        self.REL_ERR = sp.sqrt(self.REL_ERR/i)
+        self.REL_ERR = sp.sqrt(self.REL_ERR)/i
         plt.hist(self.REL_ERR, bins=25, color='k', alpha=0.3, label='SU2')
         print 'Error max SU2', max(self.REL_ERR)
+        setattr(self.SU2[which_case],"median_ERR",sp.median(self.REL_ERR));
         
         #Plot the SciPy error
         i =0;
@@ -286,10 +370,11 @@ class RefinementLevel(object):
             self.REL_ERR = self.REL_ERR + \
             ((getattr(self.SciPy[which_case],v)-getattr(self.RandomSamples,v))/\
             (getattr(self.RandomSamples,v)))**2;
-        self.REL_ERR = sp.sqrt(self.REL_ERR/i)
+        self.REL_ERR = sp.sqrt(self.REL_ERR)/i
         
         plt.hist(self.REL_ERR, bins=25, color='c', alpha=0.5, label='SciPy')
         print 'Error max SciPy', max(self.REL_ERR)
+        setattr(self.SciPy[which_case],"median_ERR",sp.median(self.REL_ERR));
 
         
         formatter_y = FuncFormatter(yto_percent)
@@ -300,7 +385,44 @@ class RefinementLevel(object):
         plt.legend()
 
        
-        return
+        return            
+        
+def plot_median_errors(RefinementLevels):
+        for i in RefinementLevels[0].cases:
+            x =[];
+            y =[];
+            print "Analyzing median error on: ", i ;
+            for r in RefinementLevels:                
+                x.append(r.LUT.D_dim*r.LUT.P_dim)
+                r.get_REL_ERR_SU2(i)
+                y.append(r.SU2[i].median_ERR*100)
+            
+            x = sp.array(x)
+            y = sp.array(y)            
+            y = y[sp.argsort(x)]
+            x = x[sp.argsort(x)]
+                                    
+            LHM = sp.ones((len(x),2))
+            RHS = sp.ones((len(x),1))            
+            LHM[:,1] = sp.log10(x)
+            RHS[:,0] = sp.log10(y)
+
+            sols = sp.linalg.lstsq(LHM,RHS)
+            b = -sols[0][1]
+            plt.loglog(x,y, label='%s, %s'%(i,r'$O(\frac{1}{N})^{%s}$'%str(sp.around(b,2))), basex=10, basey=10, \
+                       subsy=sp.linspace(10**(-5), 10**(-2),20),\
+                       subsx=sp.linspace(10**(2), 10**(5),50))
+
+            
+            #for r in RefinementLevels:                
+               # x.append(r.LUT.D_dim*r.LUT.P_dim)
+              #  r.get_REL_ERR_SciPy(i)
+             #   y.append(r.SciPy[i].median_ERR*100)
+            #plt.plot(x,y, label='SciPy: %s'%i)
+        plt.grid(which='both')
+        plt.xlabel('Grid Nodes (N)')
+        plt.ylabel('Median relative error [%]')
+        return;
        
               
 if __name__ == '__main__':
@@ -335,81 +457,5 @@ if __name__ == '__main__':
         level.plot_hist_compare('rhoe')
         #level.plot_hist_compare('hs')
         #level.plot_hist_compare('Prho')
-"""           
 
-
-def plot_hist_RMS(REL_ERR):
-    #adapted from http://matplotlib.org/examples/pylab_examples/histogram_percent_demo.html
-    plt.figure(figsize=(16,5))
-    plt.title('Historgram of RMS Relative Error')
-    plt.ylabel('Percentage of points')
-    plt.xlabel('Percentage RMS relative error')
-    plt.hist(REL_ERR, bins=25, color='g', alpha=0.5)
-    formatter_y = FuncFormatter(yto_percent)
-    formatter_x = FuncFormatter(xto_percent)
-    plt.gca().yaxis.set_major_formatter(formatter_y)
-    plt.gca().xaxis.set_major_formatter(formatter_x)
-    plt.grid(which='both')
-    return
-
-def yto_percent(y, x):
-        s = str(sp.around((y/(len(REL_ERR)*1.0)*100),2))
-        if matplotlib.rcParams['text.usetex'] is True:
-            return s + r'$\%$'
-        else:
-            return s + '%' 
-    
-
-def xto_percent(y, x):
-        s = str(y*100)
-        if matplotlib.rcParams['text.usetex'] is True:
-            return s + r'$\%$'
-        else:
-            return s + '%' 
-        
-
-def plot_hist_Individual(input1, input2):
-    names = [["Temperature", interp_Temperature,T],\
-            ["Density", interp_Density,rho],\
-            ["Enthalpy",interp_Enthalpy,Enthalpy],\
-            ["StaticEnergy", interp_StaticEnergy,StaticEnergy],\
-            ["Entropy",interp_Entropy,Entropy],\
-            ["Pressure",interp_Pressure,P],\
-            ["SoundSpeed", interp_SoundSpeed2,SoundSpeed],\
-            ["dPdrho_e",interp_dPdrho_e,dPdrho_e],\
-            ["dPde_rho", interp_dPde_rho,dPde_rho],\
-            ["Tdrho_e",interp_dTdrho_e,dTdrho_e],\
-            ["dTde_rho",interp_dTde_rho,dTde_rho],\
-            ["Cp",interp_Cp,Cp],\
-            ["Mu", interp_Mu,Mu],\
-            ["Kt", interp_Kt,Kt]]
-    i =1
-    plt.figure(figsize=(16,20))
-    for n in names:
-        rel_err = (n[1] - n[2])/max(n[2])
-        plt.subplot(7,2,i)
-        if (n[0] == input1) or (n[0] == input2):
-            col ='b'
-            plt.title(n[0]+" (input)")
-        else:
-            col ='g'
-            plt.title(n[0])
-        plt.hist(rel_err, bins=25, normed=False, color=col, alpha=0.5)
-        formatter_y = FuncFormatter(yto_percent)
-        formatter_x = FuncFormatter(xto_percent)
-        plt.gca().yaxis.set_major_formatter(formatter_y)
-        plt.gca().xaxis.set_major_formatter(formatter_x)
-        plt.grid(which='both')
-        
-        i = i+1
-
-    return
-
-
-
-
-#Plot the interpolation grid: 
-
-        
-"""           
 

@@ -23,18 +23,19 @@ using namespace std;
 
 int main() {
 
-	char* tablefile= (char*) "CO2.rgp";
+	//char* tablefile= (char*) "TableFile.dat";
+	char* tablefile= (char*) "TableFile.rgp";
 	//char* tablefile= (char*) "AIR/air.rgp";
 	char* gridfile = (char*) "mesh.dat";
 	char* timefile = (char*) "time.dat";
 	char* outfile;
 	su2double duration;
-	su2double rho[500];
-	su2double e[500];
-	su2double h[500];
-	su2double s[500];
-	su2double P[500];
-	su2double T[500];
+	su2double rho[2500];
+	su2double e[2500];
+	su2double h[2500];
+	su2double s[2500];
+	su2double P[2500];
+	su2double T[2500];
 	string line;
 	fstream ft;
 	fstream fs;
