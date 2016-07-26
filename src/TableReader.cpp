@@ -24,18 +24,18 @@ using namespace std;
 int main() {
 
 	//char* tablefile= (char*) "TableFile.dat";
-	char* tablefile= (char*) "TableFile.rgp";
+	char* tablefile= (char*) "TableFile.dat";
 	//char* tablefile= (char*) "AIR/air.rgp";
 	char* gridfile = (char*) "mesh.dat";
 	char* timefile = (char*) "time.dat";
 	char* outfile;
 	su2double duration;
-	su2double rho[2500];
-	su2double e[2500];
-	su2double h[2500];
-	su2double s[2500];
-	su2double P[2500];
-	su2double T[2500];
+	su2double rho[1000000];
+	su2double e[1000000];
+	su2double h[1000000];
+	su2double s[1000000];
+	su2double P[1000000];
+	su2double T[1000000];
 	string line;
 	fstream ft;
 	fstream fs;
@@ -44,22 +44,22 @@ int main() {
 	ft.open(timefile, fstream::out |fstream::trunc);
 	ft<<"";
 	ft.close();
-
+//
 	ft.open(timefile, fstream::app);
 	ft.precision(17);
 	assert(ft.is_open());
-
-
-
+//
+//
+//
 	CLookUpTable LUT2 = CLookUpTable(tablefile);
-
+//
 	fs.open(gridfile, fstream::out |fstream::trunc);
 	fs<<"";
 	fs.close();
 	LUT2.LookUpTable_Print_To_File(gridfile);
-
-	//LUT2.SetTDState_rhoe(85, 570000);
-
+//
+//	//LUT2.SetTDState_rhoe(85, 570000);
+//
 	cout<<"--------------------------------------------------------------\n";
 	cout<<"RHOE \n";
 	fs.open("rhoe_in.dat", fstream::in);
@@ -72,28 +72,28 @@ int main() {
 		i++;
 	}
 	fs.close();
-
-	//wipe the outfile before writing to it
-	outfile = (char*) "rhoe_out.dat";
-	fs.open(outfile, fstream::out |fstream::trunc);
-	fs.close();
-	for (int j=0; j<i;j++)
-	{
-			cout<<j<<endl;
-			LUT2.SetTDState_rhoe(rho[j], e[j]);
-			LUT2.RecordState(outfile);
-	}
+//
+//	//wipe the outfile before writing to it
+//	outfile = (char*) "rhoe_out.dat";
+//	fs.open(outfile, fstream::out |fstream::trunc);
+//	fs.close();
+//	for (int j=0; j<i;j++)
+//	{
+//			cout<<j<<endl;
+//			LUT2.SetTDState_rhoe(rho[j], e[j]);
+//			LUT2.RecordState(outfile);
+//	}
 	clock_t rhoe_start = clock();
 	for (int j=0; j<i;j++)
 	{
 		LUT2.SetTDState_rhoe(rho[j], e[j]);
 	}
 	duration = ((su2double)clock()-(su2double)rhoe_start)/((su2double)CLOCKS_PER_SEC);
-	ft<<"Rhoe time: "<<duration<<endl;
-
-
-
-	cout<<"--------------------------------------------------------------\n";
+	ft<<"rhoe time: "<<duration<<endl;
+//
+//
+//
+cout<<"--------------------------------------------------------------\n";
 	cout<<"PT"<<endl;
 
 	fs.open("PT_in.dat", fstream::in);
@@ -123,9 +123,9 @@ int main() {
 	}
 	duration = ((su2double)clock()-(su2double)PT_start)/((su2double)CLOCKS_PER_SEC);
 	ft<<"PT time: "<<duration<<endl;
-	//LUT2.SetTDState_PT(5520052, 270);
-	//LUT2.reset_Restart();
-
+//	//LUT2.SetTDState_PT(5520052, 270);
+//	//LUT2.reset_Restart();
+//
 	cout<<"--------------------------------------------------------------\n";
 	cout<<"Prho \n";
 	fs.open("Prho_in.dat", fstream::in);
@@ -138,16 +138,16 @@ int main() {
 		i++;
 	}
 	fs.close();
-	//wipe the outfile before writing to it
-	outfile = (char*) "Prho_out.dat";
-	fs.open(outfile, fstream::out |fstream::trunc);
-	fs.close();
-	for (int j=0; j<i;j++)
-		{
-			cout<<j<<endl;
-			LUT2.SetTDState_Prho(P[j], rho[j]);
-			LUT2.RecordState(outfile);
-		}
+//	//wipe the outfile before writing to it
+//	outfile = (char*) "Prho_out.dat";
+//	fs.open(outfile, fstream::out |fstream::trunc);
+//	fs.close();
+//	for (int j=0; j<i;j++)
+//		{
+//			cout<<j<<endl;
+//			LUT2.SetTDState_Prho(P[j], rho[j]);
+//			LUT2.RecordState(outfile);
+//		}
 	clock_t prho_start = clock();
 	for (int j=0; j<i;j++)
 	{
@@ -155,9 +155,9 @@ int main() {
 	}
 	duration = ((su2double)clock()-(su2double)prho_start)/((su2double)CLOCKS_PER_SEC);
 	ft<<"Prho time: "<<duration<<endl;
-
-	//LUT2.SetTDState_Prho(5521052, 80);
-
+//
+//	//LUT2.SetTDState_Prho(5521052, 80);
+//
 	cout<<"--------------------------------------------------------------\n";
 
 	cout<<"rhoT"<<endl;
@@ -171,16 +171,16 @@ int main() {
 		i++;
 	}
 	fs.close();
-	//wipe the outfile before writing to it
-	outfile = (char*) "rhoT_out.dat";
-	fs.open(outfile, fstream::out |fstream::trunc);
-	fs.close();
-	for (int j=0; j<i;j++)
-		{
-			cout<<j<<endl;
-			LUT2.SetTDState_rhoT(rho[j], T[j]);
-			LUT2.RecordState(outfile);
-		}
+//	//wipe the outfile before writing to it
+//	outfile = (char*) "rhoT_out.dat";
+//	fs.open(outfile, fstream::out |fstream::trunc);
+//	fs.close();
+//	for (int j=0; j<i;j++)
+//		{
+//			cout<<j<<endl;
+//			LUT2.SetTDState_rhoT(rho[j], T[j]);
+//			LUT2.RecordState(outfile);
+//		}
 	clock_t rhoT_start = clock();
 	for (int j=0; j<i;j++)
 	{
@@ -188,9 +188,9 @@ int main() {
 	}
 	duration = ((su2double)clock()-(su2double)rhoT_start)/((su2double)CLOCKS_PER_SEC);
 	ft<<"RHOT time: "<<duration<<endl;
-	//LUT2.SetTDState_rhoT(90, 80);
-	//LUT2.reset_Restart();
-
+//	//LUT2.SetTDState_rhoT(90, 80);
+//	//LUT2.reset_Restart();
+//
 	cout<<"--------------------------------------------------------------\n";
 
 	cout<<"Ps"<<endl;
@@ -204,16 +204,16 @@ int main() {
 		i++;
 	}
 	fs.close();
-	//wipe the outfile before writing to it
-	outfile = (char*) "Ps_out.dat";
-	fs.open(outfile, fstream::out |fstream::trunc);
-	fs.close();
-	for (int j=0; j<i;j++)
-		{
-			cout<<j<<endl;
-			LUT2.SetTDState_Ps(P[j], s[j]);
-			LUT2.RecordState(outfile);
-		}
+//	//wipe the outfile before writing to it
+//	outfile = (char*) "Ps_out.dat";
+//	fs.open(outfile, fstream::out |fstream::trunc);
+//	fs.close();
+//	for (int j=0; j<i;j++)
+//		{
+//			cout<<j<<endl;
+//			LUT2.SetTDState_Ps(P[j], s[j]);
+//			LUT2.RecordState(outfile);
+//		}
 	clock_t Ps_start = clock();
 	for (int j=0; j<i;j++)
 	{
@@ -222,7 +222,7 @@ int main() {
 	//LUT2.SetTDState_Ps(5400000, 2200);
 	duration = ((su2double)clock()-(su2double)Ps_start)/((su2double)CLOCKS_PER_SEC);
 	ft<<"PS time: "<<duration<<endl;
-
+//
 	cout<<"--------------------------------------------------------------\n";
 
 	cout<<"hs"<<endl;
@@ -236,23 +236,23 @@ int main() {
 		i++;
 	}
 	fs.close();
-	//wipe the outfile before writing to it
-	outfile = (char*) "hs_out.dat";
-	fs.open(outfile, fstream::out |fstream::trunc);
-	fs.close();
-	for (int j=0; j<i;j++)
-		{
-			cout<<j<<endl;
-			LUT2.SetTDState_hs(h[j], s[j]);
-			LUT2.RecordState(outfile);
-		}
+//	//wipe the outfile before writing to it
+//	outfile = (char*) "hs_out.dat";
+//	fs.open(outfile, fstream::out |fstream::trunc);
+//	fs.close();
+//	for (int j=0; j<i;j++)
+//		{
+//			cout<<j<<endl;
+//			LUT2.SetTDState_hs(h[j], s[j]);
+//			LUT2.RecordState(outfile);
+//		}
 	clock_t hs_start = clock();
 	for (int j=0; j<i;j++)
 	{
 		LUT2.SetTDState_hs(h[j], s[j]);
 	}
 	duration = ((su2double)clock()-(su2double)hs_start)/((su2double)CLOCKS_PER_SEC);
-	ft<<"HS time: "<<duration<<endl;
+	ft<<"hs time: "<<duration<<endl;
 	//LUT2.SetTDState_hs(531782, 2092);
 	//LUT2.reset_Restart();
 

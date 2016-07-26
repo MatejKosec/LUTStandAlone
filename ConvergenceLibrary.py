@@ -250,6 +250,9 @@ class RefinementLevel(object):
         }
    LUT={};
    SU2={};
+   time={"rhoe":1000,"PT":1000,"Prho":1000,\
+        "rhoT":1000,"Ps":1000,"hs":1000};
+        
    RandomSamples=False;
    SciPy={}; 
             
@@ -269,6 +272,17 @@ class RefinementLevel(object):
    def load_results_SciPy(self,interp_kind='linear'):
        self.SciPy={i:SciPy_InterpolatedData(i,self.LUT, self.RandomSamples, \
        interp_kind ) for i in self.cases};
+     
+   def load_time_perf(self,filename):
+       with open(filename, 'r') as f:
+           lines = f.readlines()
+       print lines
+       for j in self.time.keys():
+           for i in range(len(lines)):
+               if (lines[i].find(j) != -1):
+                   print lines[i]
+                   self.time[j] = float(lines[i].strip().split()[-1])
+               
       
    def get_REL_ERR_SU2(self,which_case):
         i=0;
