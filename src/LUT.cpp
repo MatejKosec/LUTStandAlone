@@ -14,7 +14,7 @@ using namespace std;
 
 
 CLookUpTable::CLookUpTable(string Filename) {
-	LUT_Debug_Mode = true;
+	LUT_Debug_Mode = false;
 	rank = 12201;
 
 #ifdef HAVE_MPI
@@ -901,11 +901,11 @@ void CLookUpTable::SetTDState_rhoT(su2double rho, su2double T) {
 	UpperI = Table_Density_Stations - 1;
 	LowerI = 0;
 
-	if (not skewed_linear_table) {
-		Search_NonEquispaced_Rho_Index(rho);
-		Search_j_for_Y_given_i(rho, T, ThermoTables_Density,
-				ThermoTables_Temperature);
-	}
+
+	Search_NonEquispaced_Rho_Index(rho);
+	Search_j_for_Y_given_i(rho, T, ThermoTables_Density,
+			ThermoTables_Temperature);
+
 
 	//Determine the interpolation coefficients
 	Interpolate_2D_Bilinear_Arbitrary_Skew_Coeff(rho, T, ThermoTables_Density,

@@ -24,18 +24,18 @@ using namespace std;
 int main() {
 
 	//char* tablefile= (char*) "TableFile.dat";
-	char* tablefile= (char*) "TableFile.dat";
 	//char* tablefile= (char*) "AIR/air.rgp";
 	char* gridfile = (char*) "mesh.dat";
 	char* timefile = (char*) "time.dat";
+	char* tablefile= (char*) "TableFile.dat";
 	char* outfile;
-	su2double duration;
-	su2double rho[1000000];
-	su2double e[1000000];
-	su2double h[1000000];
-	su2double s[1000000];
-	su2double P[1000000];
-	su2double T[1000000];
+	double duration;
+	double *rho= new double[400000];
+	double *e  = new double[400000];
+	double *h  = new double[400000];
+	double *s  = new double[400000];
+	double *P  = new double[400000];
+	double *T  = new double[400000];
 	string line;
 	fstream ft;
 	fstream fs;
@@ -44,15 +44,12 @@ int main() {
 	ft.open(timefile, fstream::out |fstream::trunc);
 	ft<<"";
 	ft.close();
-//
 	ft.open(timefile, fstream::app);
 	ft.precision(17);
 	assert(ft.is_open());
-//
-//
-//
+
 	CLookUpTable LUT2 = CLookUpTable(tablefile);
-//
+
 	fs.open(gridfile, fstream::out |fstream::trunc);
 	fs<<"";
 	fs.close();
@@ -187,7 +184,7 @@ cout<<"--------------------------------------------------------------\n";
 		LUT2.SetTDState_rhoT(rho[j], T[j]);
 	}
 	duration = ((su2double)clock()-(su2double)rhoT_start)/((su2double)CLOCKS_PER_SEC);
-	ft<<"RHOT time: "<<duration<<endl;
+	ft<<"rhoT time: "<<duration<<endl;
 //	//LUT2.SetTDState_rhoT(90, 80);
 //	//LUT2.reset_Restart();
 //
@@ -221,7 +218,7 @@ cout<<"--------------------------------------------------------------\n";
 	}
 	//LUT2.SetTDState_Ps(5400000, 2200);
 	duration = ((su2double)clock()-(su2double)Ps_start)/((su2double)CLOCKS_PER_SEC);
-	ft<<"PS time: "<<duration<<endl;
+	ft<<"Ps time: "<<duration<<endl;
 //
 	cout<<"--------------------------------------------------------------\n";
 
@@ -258,6 +255,12 @@ cout<<"--------------------------------------------------------------\n";
 
 	cout<<"------------------------------END--------------------------------\n";
 	ft.close();
+	delete[] rho;
+	delete[] e;
+	delete[] h;
+	delete[] s;
+	delete[] P;
+	delete[] T;
 	return 0;
 }
 

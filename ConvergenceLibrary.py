@@ -250,8 +250,7 @@ class RefinementLevel(object):
         }
    LUT={};
    SU2={};
-   time={"rhoe":1000,"PT":1000,"Prho":1000,\
-        "rhoT":1000,"Ps":1000,"hs":1000};
+   time=None;
         
    RandomSamples=False;
    SciPy={}; 
@@ -259,7 +258,8 @@ class RefinementLevel(object):
    def __init__(self, filename, cases):        
        self.cases =cases;        
        self.filename=filename;
-     
+       self.time = {"rhoe":1000,"PT":1000,"Prho":1000,\
+        "rhoT":1000,"Ps":1000,"hs":1000};
    def load_random_samples(self,RandomSamples):
        self.RandomSamples = RandomSamples
    
@@ -276,7 +276,6 @@ class RefinementLevel(object):
    def load_time_perf(self,filename):
        with open(filename, 'r') as f:
            lines = f.readlines()
-       print lines
        for j in self.time.keys():
            for i in range(len(lines)):
                if (lines[i].find(j) != -1):
@@ -399,7 +398,54 @@ class RefinementLevel(object):
         plt.legend()
 
        
-        return            
+        return       
+        
+def plot_time_perf(RefinementLevels, FP_time, points_count):
+    for i in RefinementLevels[0].time.keys():
+            x =[];
+            y =[];
+            print "Analyzing computation time of: ", i ;
+            for r in RefinementLevels:                
+                if r!= RefinementLevels[0]:
+                    x.append(r.LUT.D_dim*r.LUT.P_dim)
+                    y.append(r.time[i])
+            x = sp.array(x)
+            y = sp.array(y)            
+            y = y[sp.argsort(x)]
+            x = x[sp.argsort(x)]
+            print y            
+                                    
+            plt.loglog(x,y/points_count, label='%s'%i, basex=10, basey=10) 
+    plt.loglog(x,FP_time*sp.ones_like(x)/points_count,label='FluidProp',basex=10, basey=10)
+    plt.grid(which='both')
+    plt.xlabel('LuT Grid Nodes (N)')
+    plt.ylabel('Time per point [sample points: %i]'%points_count)
+    return
+    
+def plot_relative_perf(RefinementLevels, FP_time, points_count):
+    for i in RefinementLevels[0].time.keys():
+            x =[];
+            y =[];
+            print "Analyzing relative computation time of: ", i ;
+            for r in RefinementLevels:  
+                if r!= RefinementLevels[0]:
+                    x.append(r.LUT.D_dim*r.LUT.P_dim)
+                    y.append(r.time[i])
+            print y
+            x = sp.array(x)
+            y = sp.array(y)            
+            y = y[sp.argsort(x)]
+            x = x[sp.argsort(x)]
+                                    
+            plt.semilogx(x,(FP_time/y), label='%s'%i)#, basex=10, basey=10) \
+            #           subsy=sp.linspace(10**(-5), 10**(-2),20),\
+                       #subsx=sp.linspace(10**(2), 10**(5),50))
+    #plt.loglog(x,FP_time*sp.ones_like(x)/points_count,label='FluidProp',basex=10, basey=10)
+    plt.grid(which='both')
+    plt.xlabel('LuT Grid Nodes (N)')
+    plt.ylabel('Speed-up factor wrt. FluidProp')
+    return
+    
         
 def plot_median_errors(RefinementLevels):
         for i in RefinementLevels[0].cases:
@@ -426,7 +472,6 @@ def plot_median_errors(RefinementLevels):
             plt.loglog(x,y, label='%s, %s'%(i,r'$O(\frac{1}{N})^{%s}$'%str(sp.around(b,2))), basex=10, basey=10, \
                        subsy=sp.linspace(10**(-5), 10**(-2),20),\
                        subsx=sp.linspace(10**(2), 10**(5),50))
-
             
             #for r in RefinementLevels:                
                # x.append(r.LUT.D_dim*r.LUT.P_dim)
