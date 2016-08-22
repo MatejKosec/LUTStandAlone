@@ -16,19 +16,14 @@ using namespace std;
 
 class CTrapezoidalMap{
 protected:
-	//First define aspects of the triangulation
-	int ** Triangles_Connecting_Points;
-	vector< vector <int> > Edges_in_Triangulaiton;
-	vector< vector < vector <int> > > Edge_To_Face_Connectivity;
-
 	//The unique values of x which exist in the data
 	vector< su2double > Unique_X_Bands;
 	//The value that each edge which intersects the band takes within that
 	//same band. Used to sort the edges
-	vector< int > Index_of_Edges_Intersecting_Band;
-	vector< su2double > Y_Value_of_Edge_Within_Band;
+	vector< pair < su2double,int > > Y_Value_of_Edge_Within_Band_And_Index;
 public:
-	CTrapezoidalMap(su2double* x_samples, su2double* y_samples, vector< vector <int> > *unique_edges, int npoints_in_zone);
+	CTrapezoidalMap();
+	CTrapezoidalMap(vector< su2double > x_samples, vector< su2double > y_samples, vector< vector <int> > unique_edges);
 	int Find_Containing_Simplex(su2double x, su2double y);
 
 };
@@ -96,26 +91,24 @@ protected:
 	int nTable_Zone_Triangles[2]; /*!< \brief Number of triangles in the '2' zones of the LuT (must be triangles for now)*/
 	vector< vector <int> > Table_Zone_Triangles[2];  /*!< \brief The triangles in each zone are stored as three intgers (the tree defining data-points)*/
 	vector< vector <int> > Table_Zone_Edges[2]; /*!< \brief Number of edges in the '2' zones of the LuT*/
-	//vector<su2double> Table_Zone_Edges (2,2);  /*!< \brief List of unique edges for each zone*/
-	su2double StaticEnergy_Table_Limits[2][2]; /*!< \brief The [min,max] values of the StaticEnergy values in the LUT */
-	su2double Entropy_Table_Limits[2][2]; /*!< \brief The [min,max] values of the Entropy values in the LUT */
-	su2double Enthalpy_Table_Limits[2][2]; /*!< \brief The [min,max] values of the Enthalpy values in the LUT */
-	su2double Density_Table_Limits[2][2];/*!< \brief The [min,max] values of the Density values in the LUT */
-	su2double Pressure_Table_Limits[2][2];/*!< \brief The [min,max] values of the Pressure values in the LUT */
-	su2double SoundSpeed2_Table_Limits[2][2]; /*!< \brief The [min,max] values of the SoundSpeed squared values in the LUT */
-	su2double Temperature_Table_Limits[2][2];/*!< \brief The [min,max] values of the Temperature values in the LUT */
-	su2double dPdrho_e_Table_Limits[2][2];/*!< \brief The [min,max] values of the dPdrho_e  values in the LUT */
-	su2double dPde_rho_Table_Limits[2][2];/*!< \brief The [min,max] values of the dPde_rho  values in the LUT */
-	su2double dTdrho_e_Table_Limits[2][2];/*!< \brief The [min,max] values of the dPde_rho  values in the LUT */
-	su2double dTde_rho_Table_Limits[2][2];/*!< \brief The [min,max] values of the dPde_rho  values in the LUT */
-	su2double Cp_Table_Limits[2][2];/*!< \brief The [min,max] values of the dPde_rho  values in the LUT */
-	su2double Mu_Table_Limits[2][2];/*!< \brief The [min,max] values of the dPde_rho  values in the LUT */
-	su2double dmudrho_T_Table_Limits[2][2];/*!< \brief (UNUSED) The [min,max] values of the dmudrho_T  values in the LUT */
-	su2double dmudT_rho_Table_Limits[2][2];/*!< \brief (UNUSED) The [min,max] values of the dmudT_rho  values in the LUT */
-	su2double Kt_Table_Limits[2][2];/*!< \brief The [min,max] values of the Kt values in the LUT */
-	su2double dktdrho_T_Table_Limits[2][2];/*!< \brief (UNUSED) The [min,max] values of the dktdrho_T values in the LUT */
-	su2double dktdT_rho_Table_Limits[2][2];/*!< \brief (UNUSED) The [min,max] values of the dktdT_rho values in the LUT */
-	//Nearest neighbour's i and j indexes
+	su2double StaticEnergy_Table_Limits[2]; /*!< \brief The [min,max] values of the StaticEnergy values in the LUT */
+	su2double Entropy_Table_Limits[2]; /*!< \brief The [min,max] values of the Entropy values in the LUT */
+	su2double Enthalpy_Table_Limits[2]; /*!< \brief The [min,max] values of the Enthalpy values in the LUT */
+	su2double Density_Table_Limits[2];/*!< \brief The [min,max] values of the Density values in the LUT */
+	su2double Pressure_Table_Limits[2];/*!< \brief The [min,max] values of the Pressure values in the LUT */
+	su2double SoundSpeed2_Table_Limits[2]; /*!< \brief The [min,max] values of the SoundSpeed squared values in the LUT */
+	su2double Temperature_Table_Limits[2];/*!< \brief The [min,max] values of the Temperature values in the LUT */
+	su2double dPdrho_e_Table_Limits[2];/*!< \brief The [min,max] values of the dPdrho_e  values in the LUT */
+	su2double dPde_rho_Table_Limits[2];/*!< \brief The [min,max] values of the dPde_rho  values in the LUT */
+	su2double dTdrho_e_Table_Limits[2];/*!< \brief The [min,max] values of the dPde_rho  values in the LUT */
+	su2double dTde_rho_Table_Limits[2];/*!< \brief The [min,max] values of the dPde_rho  values in the LUT */
+	su2double Cp_Table_Limits[2];/*!< \brief The [min,max] values of the dPde_rho  values in the LUT */
+	su2double Mu_Table_Limits[2];/*!< \brief The [min,max] values of the dPde_rho  values in the LUT */
+	su2double dmudrho_T_Table_Limits[2];/*!< \brief (UNUSED) The [min,max] values of the dmudrho_T  values in the LUT */
+	su2double dmudT_rho_Table_Limits[2];/*!< \brief (UNUSED) The [min,max] values of the dmudT_rho  values in the LUT */
+	su2double Kt_Table_Limits[2];/*!< \brief The [min,max] values of the Kt values in the LUT */
+	su2double dktdrho_T_Table_Limits[2];/*!< \brief (UNUSED) The [min,max] values of the dktdrho_T values in the LUT */
+	su2double dktdT_rho_Table_Limits[2];/*!< \brief (UNUSED) The [min,max] values of the dktdT_rho values in the LUT */
 
 public:
 
@@ -140,10 +133,9 @@ public:
 	void Get_Unique_Edges();
 	void Search_NonEquispaced_Rho_Index(su2double rho);
 	void Search_NonEquispaced_P_Index(su2double P);
-	void Search_Linear_Skewed_Table(su2double x, su2double P, su2double **ThermoTables_X);
-	void Search_i_for_X_given_j(su2double x, su2double y, su2double **ThermoTables_X, su2double **ThermoTables_Y );
-	void Search_j_for_Y_given_i(su2double x, su2double y, su2double **ThermoTables_X, su2double **ThermoTables_Y );
-	void Zig_Zag_Search(su2double x, su2double y, su2double **ThermoTables_X, su2double **ThermoTables_Y);
+	void Search_Linear_Skewed_Table(su2double x, su2double P, vector< su2double > *ThermoTables_X);
+	void Search_i_for_X_given_j(su2double x, su2double y, vector< su2double > *ThermoTables_X, vector< su2double > *ThermoTables_Y );
+	void Search_j_for_Y_given_i(su2double x, su2double y, vector< su2double > *ThermoTables_X, vector< su2double > *ThermoTables_Y );
 	void SetTDState_rhoe(su2double rho, su2double e);
 
 	/*!
@@ -210,7 +202,7 @@ public:
 	 * \param[in] grid_var - the pair of thermodynamic variables which define the grid i.e. the interpolation quad. (e.g. RHOE for rhoe)
 	 */
 
-	void Interpolate_2D_Bilinear_Arbitrary_Skew_Coeff(su2double x, su2double y, su2double **ThermoTables_X, su2double **ThermoTables_Y, std::string grid_var);
+	void Interpolate_2D_Bilinear_Arbitrary_Skew_Coeff(su2double x, su2double y, vector< su2double > *ThermoTables_X, vector< su2double > *ThermoTables_Y, std::string grid_var);
 
 
 	/*!
@@ -218,7 +210,7 @@ public:
 	 * \param[in] interpolant_var - the name of the variable to be interpolated e.g Density
 	 */
 
-	su2double Interpolate_2D_Bilinear(su2double ** ThermoTables_Z);
+	su2double Interpolate_2D_Bilinear(vector< su2double > *ThermoTables_Z);
 	void Check_Interpolated_PRHO_Limits(std::string interpolation_case);
 
 	/*!
