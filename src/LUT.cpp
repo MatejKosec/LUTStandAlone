@@ -10,7 +10,66 @@
 #include "stdio.h"
 #include "LUT.hpp"
 #include <iomanip>
+#include <vector>
 using namespace std;
+
+CTrapezoidalMap::CTrapezoidalMap(su2double* x_samples, su2double* y_samples,
+		vector<vector<int> > * unique_edges, int npoints_in_zone) {
+
+	//First define aspects of the triangulation
+
+	Index_of_Edges_Intersecting_Band;
+	Edge_To_Face_Connectivity;
+	copy(x_samples[0], x_samples[npoints_in_zone], Unique_X_Bands);
+	Y_Value_of_Edge_Within_Band;
+
+//	x_arg = sp.argsort(x_array)
+//    y = y_array[x_arg]
+//    x = x_array[x_arg]
+//    bands = sp.unique(x) //Elimiate duplicate x_values
+//
+//    int b_max = Unique_X_Bands.size()-1;
+//    int b = 0
+//    int e_max = edges)
+//    int i = 0
+//    int k = 0
+//    double x_low =0;
+//    double x_hi = 0;
+//    edges_temp = sp.zeros(len(x_array), dtype = sp.int32);
+//    edges_in_band = sp.empty(len(bands), dtype=sp.ndarray)
+//    band_y_values_temp = sp.zeros(len(x_array), dtype = sp.float64);
+//    band_y_values = sp.empty(len(bands), dtype=sp.ndarray)
+//    print 'Start building trapezoidal map for %s vs. %s pair'%(x_pair, y_pair)
+//    #Check which edges intersect the band
+//    t1 = time.time()
+//    while b< (b_max):
+//        x_low = bands[b]
+//        x_hi  = bands[b+1]
+//        i = 0
+//        k = 0
+//        while i<e_max:
+//            e = tri.edges[i]
+//            if x_array[e[0]] <= x_low and x_array[e[1]]>=x_hi:
+//                edges_temp[k] = i
+//                band_y_values_temp[k] = y_array[e[0]] + (y_array[e[1]]-y_array[e[0]])/(x_array[e[1]]-x_array[e[0]])*((x_low+x_hi)/2.0-x_array[e[0]])
+//                k = k+1
+//            elif x_array[e[1]] <= x_low and x_array[e[0]]>=x_hi:
+//                edges_temp[k] = i
+//                band_y_values_temp[k] = y_array[e[0]] + (y_array[e[1]]-y_array[e[0]])/(x_array[e[1]]-x_array[e[0]])*((x_low+x_hi)/2.0-x_array[e[0]])
+//                k = k+1
+//            i = i+1
+//        number_of_intersects = k
+//        sort_intersects = sp.argsort(band_y_values_temp[0:number_of_intersects])
+//        edges_in_band[b] = sp.copy(edges_temp[sort_intersects])
+//        band_y_values[b] = sp.copy(band_y_values_temp[sort_intersects])
+//        b = b+1
+}
+
+int CTrapezoidalMap::Find_Containing_Simplex(su2double x, su2double y) {
+	int triangle;
+
+	return triangle;
+}
 
 CLookUpTable::CLookUpTable(string Filename) {
 	LUT_Debug_Mode = false;
@@ -54,8 +113,9 @@ CLookUpTable::CLookUpTable(string Filename) {
 				<< endl;
 		cout << "Number of triangles in zone 1: " << nTable_Zone_Triangles[1]
 				<< endl;
+		cout << "Detecting all unique edges..." << endl;
+		Get_Unique_Edges();
 
-		cout << "Print LUT errors? (LUT_Debug_Mode):  " << LUT_Debug_Mode << endl;
 		// Building an KD_tree for the HS thermopair
 		cout << "Building trapezoidal map for rhoe..." << endl;
 		cout << "Building trapezoidal map for Prho..." << endl;
@@ -63,6 +123,7 @@ CLookUpTable::CLookUpTable(string Filename) {
 		cout << "Building trapezoidal map for Ps..." << endl;
 		cout << "Building trapezoidal map for rhoT..." << endl;
 		//cout << "Building trapezoidal map for PT..."<<endl;
+		cout << "Print LUT errors? (LUT_Debug_Mode):  " << LUT_Debug_Mode << endl;
 
 	}
 }
@@ -94,6 +155,35 @@ CLookUpTable::~CLookUpTable(void) {
 		}
 		delete[] Table_Zone_Triangles[i];
 	}
+}
+
+void CLookUpTable::Get_Unique_Edges() {
+	//Import all potential edges into a vector
+	for (int j = 0; j < 2; j++) {
+		Table_Zone_Edges[j].resize(3 * nTable_Zone_Triangles[j], vector<int>(2, 0));
+		//Fill with edges (based on triangulation
+		for (int i = 0; i < nTable_Zone_Triangles[j]; i++) {
+			int smaller_point, larger_point;
+			smaller_point = Table_Zone_Triangles[j][i][0];
+			larger_point = Table_Zone_Triangles[j][i][1];
+			Table_Zone_Edges[j][3 * i + 0][0] = min(smaller_point, larger_point);
+			Table_Zone_Edges[j][3 * i + 0][1] = max(smaller_point, larger_point);
+			smaller_point = Table_Zone_Triangles[j][i][1];
+			larger_point = Table_Zone_Triangles[j][i][2];
+			Table_Zone_Edges[j][3 * i + 1][0] = min(smaller_point, larger_point);
+			Table_Zone_Edges[j][3 * i + 1][1] = max(smaller_point, larger_point);
+			smaller_point = Table_Zone_Triangles[j][i][2];
+			larger_point = Table_Zone_Triangles[j][i][0];
+			Table_Zone_Edges[j][3 * i + 2][0] = min(smaller_point, larger_point);
+			Table_Zone_Edges[j][3 * i + 2][1] = max(smaller_point, larger_point);
+		}
+		//Sort the edges to enable selecting unique entries only
+		sort(Table_Zone_Edges[j].begin(), Table_Zone_Edges[j].end());
+		//Make the list of edges unique
+		unique(Table_Zone_Edges[j].begin(), Table_Zone_Edges[j].end());
+	}
+
+	//Filter out all the edges which have been imported twice
 }
 
 void CLookUpTable::Search_NonEquispaced_Rho_Index(su2double rho) {
@@ -955,110 +1045,7 @@ void CLookUpTable::LookUpTable_Malloc(int Index_of_Zone) {
 	}
 }
 
-void CLookUpTable::Find_Table_Limits() {
-	Density_Table_Limits[0] = HUGE_VAL;
-	Density_Table_Limits[1] = -HUGE_VAL;
-	Pressure_Table_Limits[0] = HUGE_VAL;	//lower limit
-	Pressure_Table_Limits[1] = -HUGE_VAL;	//upper limit
-	Enthalpy_Table_Limits[0] = HUGE_VAL;	//lower limit
-	Enthalpy_Table_Limits[1] = -HUGE_VAL;	//upper limit
-	SoundSpeed2_Table_Limits[0] = HUGE_VAL;	//lower limit
-	SoundSpeed2_Table_Limits[1] = -HUGE_VAL;	//upper limit
-	Cp_Table_Limits[0] = HUGE_VAL;	//lower limit
-	Cp_Table_Limits[1] = -HUGE_VAL;	//upper limit
-	Entropy_Table_Limits[0] = HUGE_VAL;	//lower limit
-	Entropy_Table_Limits[1] = -HUGE_VAL;	//upper limit
-	dPdrho_e_Table_Limits[0] = HUGE_VAL;	//lower limit
-	dPdrho_e_Table_Limits[1] = -HUGE_VAL;	//upper limit
-	dPde_rho_Table_Limits[0] = HUGE_VAL;	//lower limit
-	dPde_rho_Table_Limits[1] = -HUGE_VAL;	//upper limit
-	dTdrho_e_Table_Limits[0] = HUGE_VAL;	//lower limit
-	dTdrho_e_Table_Limits[1] = -HUGE_VAL;	//upper limit
-	dTde_rho_Table_Limits[0] = HUGE_VAL;	//lower limit
-	dTde_rho_Table_Limits[1] = -HUGE_VAL;	//upper limit
-	Temperature_Table_Limits[0] = HUGE_VAL;	//lower limit
-	Temperature_Table_Limits[1] = -HUGE_VAL;	//upper limit
-	StaticEnergy_Table_Limits[0] = HUGE_VAL;	//lower limit
-	StaticEnergy_Table_Limits[1] = -HUGE_VAL;	//upper limit
-	for (int i = 0; i < 2; i++) {
-		for (int j = 0; j < nTable_Zone_Stations[i]; j++) {
-			//The table limits are stored for later checks of values becoming inconsistent
-			if (ThermoTables_Density[i][j] > Density_Table_Limits[1]) {
-				Density_Table_Limits[1] = ThermoTables_Density[i][j];
-			}
-			if (ThermoTables_Density[i][j] < Density_Table_Limits[0]) {
-				Density_Table_Limits[0] = ThermoTables_Density[i][j];
-			}
 
-			if (ThermoTables_Pressure[i][j] > Pressure_Table_Limits[1]) {
-				Pressure_Table_Limits[1] = ThermoTables_Pressure[i][j];
-			}
-			if (ThermoTables_Pressure[i][j] < Pressure_Table_Limits[0]) {
-				Pressure_Table_Limits[0] = ThermoTables_Pressure[i][j];
-			}
-			if (ThermoTables_Enthalpy[i][j] > Enthalpy_Table_Limits[1]) {
-				Enthalpy_Table_Limits[1] = ThermoTables_Enthalpy[i][j];
-			}
-			if (ThermoTables_Enthalpy[i][j] < Enthalpy_Table_Limits[0]) {
-				Enthalpy_Table_Limits[0] = ThermoTables_Enthalpy[i][j];
-			}
-			if (ThermoTables_SoundSpeed2[i][j] > SoundSpeed2_Table_Limits[1]) {
-				SoundSpeed2_Table_Limits[1] = ThermoTables_SoundSpeed2[i][j];
-			}
-			if (ThermoTables_SoundSpeed2[i][j] < SoundSpeed2_Table_Limits[0]) {
-				SoundSpeed2_Table_Limits[0] = ThermoTables_SoundSpeed2[i][j];
-			}
-			if (ThermoTables_Cp[i][j] > Cp_Table_Limits[1]) {
-				Cp_Table_Limits[1] = ThermoTables_Cp[i][j];
-			}
-			if (ThermoTables_Cp[i][j] < Cp_Table_Limits[0]) {
-				Cp_Table_Limits[0] = ThermoTables_Cp[i][j];
-			}
-			if (ThermoTables_Entropy[i][j] > Entropy_Table_Limits[1]) {
-				Entropy_Table_Limits[1] = ThermoTables_Entropy[i][j];
-			}
-			if (ThermoTables_Entropy[i][j] < Entropy_Table_Limits[0]) {
-				Entropy_Table_Limits[0] = ThermoTables_Entropy[i][j];
-			}
-			if (ThermoTables_dPdrho_e[i][j] > dPdrho_e_Table_Limits[1]) {
-				dPdrho_e_Table_Limits[1] = ThermoTables_dPdrho_e[i][j];
-			}
-			if (ThermoTables_dPdrho_e[i][j] < dPdrho_e_Table_Limits[0]) {
-				dPdrho_e_Table_Limits[0] = ThermoTables_dPdrho_e[i][j];
-			}
-			if (ThermoTables_dPde_rho[i][j] > dPde_rho_Table_Limits[1]) {
-				dPde_rho_Table_Limits[1] = ThermoTables_dPde_rho[i][j];
-			}
-			if (ThermoTables_dPde_rho[i][j] < dPde_rho_Table_Limits[0]) {
-				dPde_rho_Table_Limits[0] = ThermoTables_dPde_rho[i][j];
-			}
-			if (ThermoTables_dTdrho_e[i][j] > dTdrho_e_Table_Limits[1]) {
-				dTdrho_e_Table_Limits[1] = ThermoTables_dTdrho_e[i][j];
-			}
-			if (ThermoTables_dTdrho_e[i][j] < dTdrho_e_Table_Limits[0]) {
-				dTdrho_e_Table_Limits[0] = ThermoTables_dTdrho_e[i][j];
-			}
-			if (ThermoTables_dTde_rho[i][j] > dTde_rho_Table_Limits[1]) {
-				dTde_rho_Table_Limits[1] = ThermoTables_dTde_rho[i][j];
-			}
-			if (ThermoTables_dTde_rho[i][j] < dTde_rho_Table_Limits[0]) {
-				dTde_rho_Table_Limits[0] = ThermoTables_dTde_rho[i][j];
-			}
-			if (ThermoTables_Temperature[i][j] > Temperature_Table_Limits[1]) {
-				Temperature_Table_Limits[1] = ThermoTables_Temperature[i][j];
-			}
-			if (ThermoTables_Temperature[i][j] < Temperature_Table_Limits[0]) {
-				Temperature_Table_Limits[0] = ThermoTables_Temperature[i][j];
-			}
-			if (ThermoTables_StaticEnergy[i][j] > StaticEnergy_Table_Limits[1]) {
-				StaticEnergy_Table_Limits[1] = ThermoTables_StaticEnergy[i][j];
-			}
-			if (ThermoTables_StaticEnergy[i][j] < StaticEnergy_Table_Limits[0]) {
-				StaticEnergy_Table_Limits[0] = ThermoTables_StaticEnergy[i][j];
-			}
-		}
-	}
-}
 void CLookUpTable::NonDimensionalise_Table_Values() {
 	for (int i = 0; i < 2; i++) {
 		for (int j = 0; j < nTable_Zone_Stations[i]; j++) {

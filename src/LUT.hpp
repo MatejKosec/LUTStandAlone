@@ -1,23 +1,43 @@
 #define su2double double
+#include <vector>
 #include <string>
 
 using namespace std;
 
-struct KD_node {
-	int Branch_Splitting_Direction, /*!< \brief The depth of the branch within the tree, even numbers are split in x, odd in y */
-	Branch_Dimension, /*!< \brief The number of points contained on the branch */
-	*Flattened_Point_Index; /*!< \brief The flattened 2D index of the original LUT. Used to access variables other */
-	su2double * x_values, /*!< \brief The x_values of the data. Values are sorted if splitting direction is even.*/
-	*y_values; /*!< \brief  The (sorted) y_values of the data. Values are sorted if splitting direction is odd. */
-	KD_node* upper; /*!< \brief The tree-branch on the next level of the tree containing upper 50 percentile. Based on x_values for branches of even depth and y_values for odd. */
-	KD_node* lower; /*!< \brief The tree-branch on the next level of the tree containing lower 50 percentile. Based on x_values for branches of even depth and y_values for odd. */
+/*!
+ * \class CTrapezoidalMap
+ * \brief An algorithm for finding the polygon
+ * containing the query vector. Adapted from:
+ * Computational Geometry: Algorithms and Applications,
+ * 3rd edition, 2008, by M de Berg, et al.
+ * \author: M.Kosec
+ * \version 4.1.2 "Cardinal"
+ */
+
+class CTrapezoidalMap{
+protected:
+	//First define aspects of the triangulation
+	int ** Triangles_Connecting_Points;
+	vector< vector <int> > Edges_in_Triangulaiton;
+	vector< vector < vector <int> > > Edge_To_Face_Connectivity;
+
+	//The unique values of x which exist in the data
+	vector< su2double > Unique_X_Bands;
+	//The value that each edge which intersects the band takes within that
+	//same band. Used to sort the edges
+	vector< int > Index_of_Edges_Intersecting_Band;
+	vector< su2double > Y_Value_of_Edge_Within_Band;
+public:
+	CTrapezoidalMap(su2double* x_samples, su2double* y_samples, vector< vector <int> > *unique_edges, int npoints_in_zone);
+	int Find_Containing_Simplex(su2double x, su2double y);
+
 };
 
 
 /*!
  * \class CLookUpTable
- * \brief Child class for defining ideal gas model.
- * \author: A. Rubino, S.Vitale.
+ * \brief Class for defining a lookuptable fluid model
+ * \author: A. Rubino, S.Vitale., M. Kosec
  * \version 4.1.2 "Cardinal"
  */
 class CLookUpTable {
@@ -50,52 +70,51 @@ protected:
 	dktdrho_T, /*!< \brief Fluid derivative DktDrho_T.  */
 	dktdT_rho; /*!< \brief Fluid derivative DktDT_rho. */
 
-	su2double
-	*ThermoTables_StaticEnergy[2], /*!< \brief Internal Energy look up table values. */
-	*ThermoTables_Entropy[2], /*!< \brief Entropy look up table values. */
-	*ThermoTables_Enthalpy[2], /*!< \brief Enthalpy required as separate variable for use in HS tree look up table values. */
-	*ThermoTables_Density[2], /*!< \brief Density look up table values. */
-	*ThermoTables_Pressure[2], /*!< \brief Pressure look up table values. */
-	*ThermoTables_SoundSpeed2[2], /*!< \brief The speed of sound squared look up table values. */
-	*ThermoTables_Temperature[2], /*!< \brief Temperature look up table values. */
-	*ThermoTables_dPdrho_e[2], /*!< \brief Fluid derivative DpDd_e look up table values. */
-	*ThermoTables_dPde_rho[2], /*!< \brief Fluid derivative DpDe_d look up table values. */
-	*ThermoTables_dTdrho_e[2], /*!< \brief Fluid derivative DTDd_e look up table values. */
-	*ThermoTables_dTde_rho[2], /*!< \brief Fluid derivative DTDe_d look up table values. */
-	*ThermoTables_Cp[2], /*!< \brief Specific Heat Capacity at constant pressure look up table values. */
-	*ThermoTables_Mu[2], /*!< \brief Laminar Viscosity look up table values. */
-	*ThermoTables_dmudrho_T[2], /*!< \brief Fluid derivative DmuDrho_T look up table values. */
-	*ThermoTables_dmudT_rho[2], /*!< \brief Fluid derivative DmuDT_rho look up table values. */
-	*ThermoTables_Kt[2], /*!< \brief Thermal Conductivity look up table values. */
-	*ThermoTables_dktdrho_T[2], /*!< \brief Fluid derivative DktDrho_T look up table values. */
-	*ThermoTables_dktdT_rho[2]; /*!< \brief Fluid derivative DktDT_rho look up table values. */
+	vector< su2double > ThermoTables_StaticEnergy[2], /*!< \brief Internal Energy look up table values. */
+	ThermoTables_Entropy[2], /*!< \brief Entropy look up table values. */
+	ThermoTables_Enthalpy[2], /*!< \brief Enthalpy required as separate variable for use in HS tree look up table values. */
+	ThermoTables_Density[2], /*!< \brief Density look up table values. */
+	ThermoTables_Pressure[2], /*!< \brief Pressure look up table values. */
+	ThermoTables_SoundSpeed2[2], /*!< \brief The speed of sound squared look up table values. */
+	ThermoTables_Temperature[2], /*!< \brief Temperature look up table values. */
+	ThermoTables_dPdrho_e[2], /*!< \brief Fluid derivative DpDd_e look up table values. */
+	ThermoTables_dPde_rho[2], /*!< \brief Fluid derivative DpDe_d look up table values. */
+	ThermoTables_dTdrho_e[2], /*!< \brief Fluid derivative DTDd_e look up table values. */
+	ThermoTables_dTde_rho[2], /*!< \brief Fluid derivative DTDe_d look up table values. */
+	ThermoTables_Cp[2], /*!< \brief Specific Heat Capacity at constant pressure look up table values. */
+	ThermoTables_Mu[2], /*!< \brief Laminar Viscosity look up table values. */
+	ThermoTables_dmudrho_T[2], /*!< \brief Fluid derivative DmuDrho_T look up table values. */
+	ThermoTables_dmudT_rho[2], /*!< \brief Fluid derivative DmuDT_rho look up table values. */
+	ThermoTables_Kt[2], /*!< \brief Thermal Conductivity look up table values. */
+	ThermoTables_dktdrho_T[2], /*!< \brief Fluid derivative DktDrho_T look up table values. */
+	ThermoTables_dktdT_rho[2]; /*!< \brief Fluid derivative DktDT_rho look up table values. */
 
 	su2double Interpolation_Matrix[4][4]; /*!< \brief The (Vandermonde) matrix for the interpolation (bilinear) */
 	su2double Interpolation_Coeff[4][4]; /*!< \brief Used to hold inverse of Interpolation_Matrix, and solution vector */
 	int LowerI, UpperI, middleI, LowerJ, UpperJ, middleJ;/*!< \brief The i,j indexes (rho, P) of the position of the table search. Can be used as a restart for next search.*/
 	int nTable_Zone_Stations[2]; /*!< \brief Number of nodes in the '2' zones of the LuT*/
 	int nTable_Zone_Triangles[2]; /*!< \brief Number of triangles in the '2' zones of the LuT (must be triangles for now)*/
-	int **Table_Zone_Triangles[2];  /*!< \brief The triangles in each zone are stored as three integres (the tree defining data-points)*/
-	int nTable_Zone_Edges[2]; /*!< \brief Number of edges in the '2' zones of the LuT*/
+	vector< vector <int> > Table_Zone_Triangles[2];  /*!< \brief The triangles in each zone are stored as three intgers (the tree defining data-points)*/
+	vector< vector <int> > Table_Zone_Edges[2]; /*!< \brief Number of edges in the '2' zones of the LuT*/
 	//vector<su2double> Table_Zone_Edges (2,2);  /*!< \brief List of unique edges for each zone*/
-	su2double StaticEnergy_Table_Limits[2]; /*!< \brief The [min,max] values of the StaticEnergy values in the LUT */
-	su2double Entropy_Table_Limits[2]; /*!< \brief The [min,max] values of the Entropy values in the LUT */
-	su2double Enthalpy_Table_Limits[2]; /*!< \brief The [min,max] values of the Enthalpy values in the LUT */
-	su2double Density_Table_Limits[2];/*!< \brief The [min,max] values of the Density values in the LUT */
-	su2double Pressure_Table_Limits[2];/*!< \brief The [min,max] values of the Pressure values in the LUT */
-	su2double SoundSpeed2_Table_Limits[2]; /*!< \brief The [min,max] values of the SoundSpeed squared values in the LUT */
-	su2double Temperature_Table_Limits[2];/*!< \brief The [min,max] values of the Temperature values in the LUT */
-	su2double dPdrho_e_Table_Limits[2];/*!< \brief The [min,max] values of the dPdrho_e  values in the LUT */
-	su2double dPde_rho_Table_Limits[2];/*!< \brief The [min,max] values of the dPde_rho  values in the LUT */
-	su2double dTdrho_e_Table_Limits[2];/*!< \brief The [min,max] values of the dPde_rho  values in the LUT */
-	su2double dTde_rho_Table_Limits[2];/*!< \brief The [min,max] values of the dPde_rho  values in the LUT */
-	su2double Cp_Table_Limits[2];/*!< \brief The [min,max] values of the dPde_rho  values in the LUT */
-	su2double Mu_Table_Limits[2];/*!< \brief The [min,max] values of the dPde_rho  values in the LUT */
-	su2double dmudrho_T_Table_Limits[2];/*!< \brief (UNUSED) The [min,max] values of the dmudrho_T  values in the LUT */
-	su2double dmudT_rho_Table_Limits[2];/*!< \brief (UNUSED) The [min,max] values of the dmudT_rho  values in the LUT */
-	su2double Kt_Table_Limits[2];/*!< \brief The [min,max] values of the Kt values in the LUT */
-	su2double dktdrho_T_Table_Limits[2];/*!< \brief (UNUSED) The [min,max] values of the dktdrho_T values in the LUT */
-	su2double dktdT_rho_Table_Limits[2];/*!< \brief (UNUSED) The [min,max] values of the dktdT_rho values in the LUT */
+	su2double StaticEnergy_Table_Limits[2][2]; /*!< \brief The [min,max] values of the StaticEnergy values in the LUT */
+	su2double Entropy_Table_Limits[2][2]; /*!< \brief The [min,max] values of the Entropy values in the LUT */
+	su2double Enthalpy_Table_Limits[2][2]; /*!< \brief The [min,max] values of the Enthalpy values in the LUT */
+	su2double Density_Table_Limits[2][2];/*!< \brief The [min,max] values of the Density values in the LUT */
+	su2double Pressure_Table_Limits[2][2];/*!< \brief The [min,max] values of the Pressure values in the LUT */
+	su2double SoundSpeed2_Table_Limits[2][2]; /*!< \brief The [min,max] values of the SoundSpeed squared values in the LUT */
+	su2double Temperature_Table_Limits[2][2];/*!< \brief The [min,max] values of the Temperature values in the LUT */
+	su2double dPdrho_e_Table_Limits[2][2];/*!< \brief The [min,max] values of the dPdrho_e  values in the LUT */
+	su2double dPde_rho_Table_Limits[2][2];/*!< \brief The [min,max] values of the dPde_rho  values in the LUT */
+	su2double dTdrho_e_Table_Limits[2][2];/*!< \brief The [min,max] values of the dPde_rho  values in the LUT */
+	su2double dTde_rho_Table_Limits[2][2];/*!< \brief The [min,max] values of the dPde_rho  values in the LUT */
+	su2double Cp_Table_Limits[2][2];/*!< \brief The [min,max] values of the dPde_rho  values in the LUT */
+	su2double Mu_Table_Limits[2][2];/*!< \brief The [min,max] values of the dPde_rho  values in the LUT */
+	su2double dmudrho_T_Table_Limits[2][2];/*!< \brief (UNUSED) The [min,max] values of the dmudrho_T  values in the LUT */
+	su2double dmudT_rho_Table_Limits[2][2];/*!< \brief (UNUSED) The [min,max] values of the dmudT_rho  values in the LUT */
+	su2double Kt_Table_Limits[2][2];/*!< \brief The [min,max] values of the Kt values in the LUT */
+	su2double dktdrho_T_Table_Limits[2][2];/*!< \brief (UNUSED) The [min,max] values of the dktdrho_T values in the LUT */
+	su2double dktdT_rho_Table_Limits[2][2];/*!< \brief (UNUSED) The [min,max] values of the dktdT_rho values in the LUT */
 	//Nearest neighbour's i and j indexes
 
 public:
@@ -118,6 +137,7 @@ public:
 	 * \param[in] rho - input Density (must be within LUT limits)
 	 * \param[in] e   - input StaticEnergy (must be within LUT limits)
 	 */
+	void Get_Unique_Edges();
 	void Search_NonEquispaced_Rho_Index(su2double rho);
 	void Search_NonEquispaced_P_Index(su2double P);
 	void Search_Linear_Skewed_Table(su2double x, su2double P, su2double **ThermoTables_X);
@@ -208,7 +228,6 @@ public:
 
 	void LookUpTable_Malloc(int Index_of_Zone);
 	void LookUpTable_Load_TEC(std::string filename);
-	void Find_Table_Limits();
 	void NonDimensionalise_Table_Values();
 
 	/*!

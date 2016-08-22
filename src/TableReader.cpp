@@ -27,7 +27,7 @@ int main() {
 	//char* tablefile= (char*) "AIR/air.rgp";
 	char* gridfile = (char*) "mesh.dat";
 	char* timefile = (char*) "time.dat";
-	char* tablefile= (char*) "new_mesh/dT/lutmesh.tec";
+	char* tablefile= (char*) "new_mesh/dT/Complete/lutmesh.tec";
 	char* outfile;
 	double duration;
 	double *rho= new double[400000];
@@ -50,10 +50,10 @@ int main() {
 //
  	CLookUpTable LUT2 = CLookUpTable(tablefile);
 //
-//	fs.open(gridfile, fstream::out |fstream::trunc);
-//	fs<<"";
-//	fs.close();
-//	LUT2.LookUpTable_Print_To_File(gridfile);
+	fs.open(gridfile, fstream::out |fstream::trunc);
+	fs<<"";
+	fs.close();
+	LUT2.LookUpTable_Print_To_File(gridfile);
 ////
 ////	//LUT2.SetTDState_rhoe(85, 570000);
 ////
