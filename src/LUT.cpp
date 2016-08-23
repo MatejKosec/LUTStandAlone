@@ -18,11 +18,13 @@ CTrapezoidalMap::CTrapezoidalMap() {
 }
 CTrapezoidalMap::CTrapezoidalMap(vector< su2double > const &x_samples,
 		vector< su2double >  const &y_samples, vector<vector<int> > const &unique_edges) {
+	int rank = 12201;
+
+#ifdef HAVE_MPI
+	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+#endif
 
 	clock_t build_start = clock();
-
-
-	//First define aspects of the triangulation
 
 	Unique_X_Bands = x_samples; //copy the x_values in
 	//Sort the x_bands and make them unique
@@ -31,13 +33,17 @@ CTrapezoidalMap::CTrapezoidalMap(vector< su2double > const &x_samples,
 	iter = unique(Unique_X_Bands.begin(), Unique_X_Bands.end());
 	Unique_X_Bands.resize(distance(Unique_X_Bands.begin(),iter));
 	X_Limits_of_Edges.resize(unique_edges.size(), vector<su2double>(2, 0));
+	Y_Limits_of_Edges.resize(unique_edges.size(), vector<su2double>(2, 0));
 
+	//Store the x and y values of each edge into a vector for a slight speed up as it
+	//prevents some uncoalesced accesses
 	for (unsigned int j =0;j< unique_edges.size(); j++)
 	{
 		X_Limits_of_Edges[j][0] = x_samples[unique_edges[j][0]];
 		X_Limits_of_Edges[j][1] = x_samples[unique_edges[j][1]];
+		Y_Limits_of_Edges[j][0] = y_samples[unique_edges[j][0]];
+		Y_Limits_of_Edges[j][1] = y_samples[unique_edges[j][1]];
 	}
-
 
 	int b_max = Unique_X_Bands.size() - 1;
 	int b = 0;
@@ -50,33 +56,36 @@ CTrapezoidalMap::CTrapezoidalMap(vector< su2double > const &x_samples,
 
 	Y_Values_of_Edge_Within_Band_And_Index.resize(Unique_X_Bands.size());
 
-//   #Check which edges intersect the band
+	//Check which edges intersect the band
 	while (b < (b_max)) {
 		x_low = Unique_X_Bands[b];
 		x_hi = Unique_X_Bands[b + 1];
 		i = 0;
 		k = 0;
+		//This while loop determined which edges appear in a paritcular band
+		//The index of the edge being tested is 'i'
 		while (i < e_max) {
-			e = unique_edges[i];
+			//Check if edge intersects the band (vertical edges are automatically discared)
 			if (((X_Limits_of_Edges[i][0] <= x_low) and (X_Limits_of_Edges[i][1] >= x_hi))
 				 or ((X_Limits_of_Edges[i][1] <= x_low) and (X_Limits_of_Edges[i][0] >= x_hi)))
 				{
 				Y_Values_of_Edge_Within_Band_And_Index[b].push_back(make_pair(0.0, 0));
+				//Save the edge index so it can latter be recalled (when searching)
 				Y_Values_of_Edge_Within_Band_And_Index[b][k].second = i;
-				Y_Values_of_Edge_Within_Band_And_Index[b][k].first = y_samples[e[0]]
-						+ (y_samples[e[1]] - y_samples[e[0]])
-								/ (x_samples[e[1]] - x_samples[e[0]])
-								* ((x_low + x_hi) / 2.0 - x_samples[e[0]]);
+				//Determine what y value the edge takes in the middle of the band
+				Y_Values_of_Edge_Within_Band_And_Index[b][k].first = Y_Limits_of_Edges[i][0]
+						+ (Y_Limits_of_Edges[i][1] - Y_Limits_of_Edges[i][0])
+								/ (X_Limits_of_Edges[i][1] - X_Limits_of_Edges[i][0])
+								* ((x_low + x_hi) / 2.0 - X_Limits_of_Edges[i][0]);
 				k++;
 				}
 			i++;
-//        sort_intersects = sp.argsort(band_y_values_temp[0:number_of_intersects])
-//        edges_in_band[b] = sp.copy(edges_temp[sort_intersects])
-//        band_y_values[b] = sp.copy(band_y_values_temp[sort_intersects])
 		}
+		//Sort the edges in the band depending on the y
+		sort(Y_Values_of_Edge_Within_Band_And_Index[b].begin(),Y_Values_of_Edge_Within_Band_And_Index[b].end());
 		b++;
 	}
-	int rank = 12201;
+
 	su2double	duration = ((su2double)clock()-(su2double)build_start)/((su2double)CLOCKS_PER_SEC);
 	if (rank == 12201) cout<<duration<<" seconds\n";
 }
@@ -140,8 +149,8 @@ CLookUpTable::CLookUpTable(string Filename) {
 	CTrapezoidalMap rhoe_map[2];
 	rhoe_map[0] = CTrapezoidalMap(ThermoTables_Density[0],
 			ThermoTables_StaticEnergy[0], Table_Zone_Edges[0]);
-	//rhoe_map[1] = CTrapezoidalMap(ThermoTables_Density[1],
-		//		ThermoTables_StaticEnergy[1], Table_Zone_Edges[1]);
+	rhoe_map[1] = CTrapezoidalMap(ThermoTables_Density[1],
+				ThermoTables_StaticEnergy[1], Table_Zone_Edges[1]);
 
 	if (rank == 12201) {
 		cout << "Building trapezoidal map for Prho..." << endl;
