@@ -16,8 +16,11 @@ using namespace std;
 
 class CTrapezoidalMap{
 protected:
+	int rank, UpperI, LowerI, middleI, LowerJ, UpperJ, middleJ;
+	int UpperEdge, LowerEdge;
 	//The unique values of x which exist in the data
 	vector< su2double > Unique_X_Bands;
+	vector< vector <int> >  Unique_Edges;
 	vector< vector <su2double> > X_Limits_of_Edges, Y_Limits_of_Edges;
 	//The value that each edge which intersects the band takes within that
 	//same band. Used to sort the edges
@@ -26,8 +29,33 @@ public:
 	CTrapezoidalMap();
 	CTrapezoidalMap(vector< su2double > const &x_samples,
 			vector< su2double >  const &y_samples, vector<vector<int> > const &unique_edges);
-	int Find_Containing_Simplex(su2double x, su2double y);
+	void Find_Containing_Simplex(su2double x, su2double y);
+	void Search_Bands_For(su2double x);
+	void Search_Band_For_Edge(su2double x, su2double y);
 
+	int getLowerI() const {
+		return LowerI;
+	}
+
+	int getLowerJ() const {
+		return LowerJ;
+	}
+
+	int getUpperI() const {
+		return UpperI;
+	}
+
+	int getUpperJ() const {
+		return UpperJ;
+	}
+
+	int getLowerEdge() const {
+		return LowerEdge;
+	}
+
+	int getUpperEdge() const {
+		return UpperEdge;
+	}
 };
 
 
@@ -41,12 +69,17 @@ class CLookUpTable {
 
 protected:
 	int rank;
+	int CurrentZone;
+	vector< int > CurrentPoints;
 	bool LUT_Debug_Mode;/*!< \brief If true, master node prints errors of points outside LUT*/
 	su2double Pressure_Reference_Value;
 	su2double Density_Reference_Value;
 	su2double Temperature_Reference_Value;
 	su2double Velocity_Reference_Value;
 	su2double Energy_Reference_Value;
+
+	//Put the trapezoidal maps into variables
+	CTrapezoidalMap rhoe_map[2],Prho_map[2],hs_map[2],Ps_map[2],rhoT_map[2];
 
 	su2double StaticEnergy, /*!< \brief Internal Energy. */
 	Entropy, /*!< \brief Entropy. */
@@ -133,11 +166,8 @@ public:
 	 * \param[in] e   - input StaticEnergy (must be within LUT limits)
 	 */
 	void Get_Unique_Edges();
-	void Search_NonEquispaced_Rho_Index(su2double rho);
-	void Search_NonEquispaced_P_Index(su2double P);
-	void Search_Linear_Skewed_Table(su2double x, su2double P, vector< su2double > *ThermoTables_X);
-	void Search_i_for_X_given_j(su2double x, su2double y, vector< su2double > *ThermoTables_X, vector< su2double > *ThermoTables_Y );
-	void Search_j_for_Y_given_i(su2double x, su2double y, vector< su2double > *ThermoTables_X, vector< su2double > *ThermoTables_Y );
+
+
 	void SetTDState_rhoe(su2double rho, su2double e);
 
 	/*!

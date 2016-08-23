@@ -17,8 +17,9 @@ using namespace std;
 CTrapezoidalMap::CTrapezoidalMap() {
 }
 CTrapezoidalMap::CTrapezoidalMap(vector< su2double > const &x_samples,
-		vector< su2double >  const &y_samples, vector<vector<int> > const &unique_edges) {
-	int rank = 12201;
+		vector< su2double > const &y_samples,
+		vector<vector<int> > const &unique_edges) {
+	rank = 12201;
 
 #ifdef HAVE_MPI
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -31,29 +32,34 @@ CTrapezoidalMap::CTrapezoidalMap(vector< su2double > const &x_samples,
 	sort(Unique_X_Bands.begin(), Unique_X_Bands.end());
 	vector<su2double>::iterator iter;
 	iter = unique(Unique_X_Bands.begin(), Unique_X_Bands.end());
-	Unique_X_Bands.resize(distance(Unique_X_Bands.begin(),iter));
+	Unique_X_Bands.resize(distance(Unique_X_Bands.begin(), iter));
 	X_Limits_of_Edges.resize(unique_edges.size(), vector<su2double>(2, 0));
 	Y_Limits_of_Edges.resize(unique_edges.size(), vector<su2double>(2, 0));
 
 	//Store the x and y values of each edge into a vector for a slight speed up as it
 	//prevents some uncoalesced accesses
-	for (unsigned int j =0;j< unique_edges.size(); j++)
-	{
+	for (unsigned int j = 0; j < unique_edges.size(); j++) {
 		X_Limits_of_Edges[j][0] = x_samples[unique_edges[j][0]];
 		X_Limits_of_Edges[j][1] = x_samples[unique_edges[j][1]];
 		Y_Limits_of_Edges[j][0] = y_samples[unique_edges[j][0]];
 		Y_Limits_of_Edges[j][1] = y_samples[unique_edges[j][1]];
 	}
 
+	//How many bands to search?
 	int b_max = Unique_X_Bands.size() - 1;
+	//Start with band 0, obviously
 	int b = 0;
+	//How many edges to check for intersection with the band?
 	int e_max = unique_edges.size();
+	//Start with edge indexes as 0.
 	int i = 0;
+	//Count the how many edges intersect a band
 	int k = 0;
-	vector<int> e;
+	//The high and low x value of each band
 	su2double x_low = 0;
 	su2double x_hi = 0;
 
+	//Store the y_values of edges as required for searching
 	Y_Values_of_Edge_Within_Band_And_Index.resize(Unique_X_Bands.size());
 
 	//Check which edges intersect the band
@@ -66,39 +72,101 @@ CTrapezoidalMap::CTrapezoidalMap(vector< su2double > const &x_samples,
 		//The index of the edge being tested is 'i'
 		while (i < e_max) {
 			//Check if edge intersects the band (vertical edges are automatically discared)
-			if (((X_Limits_of_Edges[i][0] <= x_low) and (X_Limits_of_Edges[i][1] >= x_hi))
-				 or ((X_Limits_of_Edges[i][1] <= x_low) and (X_Limits_of_Edges[i][0] >= x_hi)))
-				{
+			if (((X_Limits_of_Edges[i][0] <= x_low)
+					and (X_Limits_of_Edges[i][1] >= x_hi))
+					or ((X_Limits_of_Edges[i][1] <= x_low)
+							and (X_Limits_of_Edges[i][0] >= x_hi))) {
 				Y_Values_of_Edge_Within_Band_And_Index[b].push_back(make_pair(0.0, 0));
 				//Save the edge index so it can latter be recalled (when searching)
 				Y_Values_of_Edge_Within_Band_And_Index[b][k].second = i;
 				//Determine what y value the edge takes in the middle of the band
-				Y_Values_of_Edge_Within_Band_And_Index[b][k].first = Y_Limits_of_Edges[i][0]
-						+ (Y_Limits_of_Edges[i][1] - Y_Limits_of_Edges[i][0])
-								/ (X_Limits_of_Edges[i][1] - X_Limits_of_Edges[i][0])
-								* ((x_low + x_hi) / 2.0 - X_Limits_of_Edges[i][0]);
+				Y_Values_of_Edge_Within_Band_And_Index[b][k].first =
+						Y_Limits_of_Edges[i][0]
+								+ (Y_Limits_of_Edges[i][1] - Y_Limits_of_Edges[i][0])
+										/ (X_Limits_of_Edges[i][1] - X_Limits_of_Edges[i][0])
+										* ((x_low + x_hi) / 2.0 - X_Limits_of_Edges[i][0]);
+				//k counts the number of edges which have been found to intersect with the band
 				k++;
-				}
+			}
+			//increament i, which  moves the algorithm along to the next edge
 			i++;
 		}
-		//Sort the edges in the band depending on the y
-		sort(Y_Values_of_Edge_Within_Band_And_Index[b].begin(),Y_Values_of_Edge_Within_Band_And_Index[b].end());
+		//Sort the edges in the band depending on the y values they were found to have
+		//It is worth noting that these y values are unique (i.e. edges cannot intersect in a band)
+		sort(Y_Values_of_Edge_Within_Band_And_Index[b].begin(),
+				Y_Values_of_Edge_Within_Band_And_Index[b].end());
+		//Move on to the next band of x values
 		b++;
 	}
 
-	su2double	duration = ((su2double)clock()-(su2double)build_start)/((su2double)CLOCKS_PER_SEC);
-	if (rank == 12201) cout<<duration<<" seconds\n";
+	su2double duration = ((su2double) clock() - (su2double) build_start)
+			/ ((su2double) CLOCKS_PER_SEC);
+	if (rank == 12201)
+		cout << duration << " seconds\n";
 }
 
-int CTrapezoidalMap::Find_Containing_Simplex(su2double x, su2double y) {
-	int triangle;
+void CTrapezoidalMap::Find_Containing_Simplex(su2double x, su2double y) {
+	//Find the x band in which the current x value sits
+	Search_Bands_For(x);
+	//Within that band find the two containing edges
+	Search_Band_For_Edge(x, y);
+}
 
-	return triangle;
+void CTrapezoidalMap::Search_Bands_For(su2double x) {
+	su2double x00;
+	UpperI = Unique_X_Bands.size() - 1;
+	LowerI = 0;
+
+	while (UpperI - LowerI > 1) {
+		middleI = (UpperI + LowerI) / 2;
+		x00 = Unique_X_Bands[middleI];
+		if (x00 > x) {
+			UpperI = middleI;
+		} else if (x00 < x) {
+			LowerI = middleI;
+		} else if (x00 == x) {
+			LowerI = middleI;
+			UpperI = LowerI + 1;
+		}
+		break;
+	}
+}
+
+void CTrapezoidalMap::Search_Band_For_Edge(su2double x, su2double y) {
+
+	su2double RunVal, y00, y10, x00, x10;
+	int RunEdge;
+	UpperJ = Y_Values_of_Edge_Within_Band_And_Index[LowerI].size() - 1;
+	LowerJ = 0;
+
+	while (UpperJ - LowerJ > 1) {
+		middleJ = (UpperJ + LowerJ) / 2;
+
+		RunEdge = Y_Values_of_Edge_Within_Band_And_Index[LowerI][middleJ].second;
+		y00 = Y_Limits_of_Edges[RunEdge][0];
+		y10 = Y_Limits_of_Edges[RunEdge][1];
+		x00 = X_Limits_of_Edges[RunEdge][0];
+		x10 = X_Limits_of_Edges[RunEdge][1];
+		//The search variable in j should be interpolated in i as well
+		RunVal = y00 + (y10 - y00) / (x10 - x00) * (x - x00);
+		if (RunVal > y) {
+			UpperJ = middleJ;
+		} else if (RunVal < y) {
+			LowerJ = middleJ;
+		} else if (RunVal == y) {
+			LowerJ = middleJ;
+			UpperJ = LowerJ + 1;
+		}
+		break;
+	}
+	UpperEdge = Y_Values_of_Edge_Within_Band_And_Index[LowerI][UpperJ].second;
+	LowerEdge = Y_Values_of_Edge_Within_Band_And_Index[LowerI][LowerJ].second;
 }
 
 CLookUpTable::CLookUpTable(string Filename) {
 	LUT_Debug_Mode = false;
 	rank = 12201;
+	CurrentPoints.resize(4, 0);
 
 #ifdef HAVE_MPI
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -146,30 +214,47 @@ CLookUpTable::CLookUpTable(string Filename) {
 		// Building an KD_tree for the HS thermopair
 		cout << "Building trapezoidal map for rhoe..." << endl;
 	}
-	CTrapezoidalMap rhoe_map[2];
+
 	rhoe_map[0] = CTrapezoidalMap(ThermoTables_Density[0],
 			ThermoTables_StaticEnergy[0], Table_Zone_Edges[0]);
 	rhoe_map[1] = CTrapezoidalMap(ThermoTables_Density[1],
-				ThermoTables_StaticEnergy[1], Table_Zone_Edges[1]);
+			ThermoTables_StaticEnergy[1], Table_Zone_Edges[1]);
 
 	if (rank == 12201) {
 		cout << "Building trapezoidal map for Prho..." << endl;
 	}
+	Prho_map[0] = CTrapezoidalMap(ThermoTables_Pressure[0],
+			ThermoTables_Density[0], Table_Zone_Edges[0]);
+	Prho_map[1] = CTrapezoidalMap(ThermoTables_Pressure[1],
+			ThermoTables_Density[1], Table_Zone_Edges[1]);
 
 	if (rank == 12201) {
 		cout << "Building trapezoidal map for hs..." << endl;
 	}
+	hs_map[0] = CTrapezoidalMap(ThermoTables_Enthalpy[0], ThermoTables_Entropy[0],
+			Table_Zone_Edges[0]);
+	hs_map[1] = CTrapezoidalMap(ThermoTables_Enthalpy[1], ThermoTables_Entropy[1],
+			Table_Zone_Edges[1]);
 
 	if (rank == 12201) {
 		cout << "Building trapezoidal map for Ps..." << endl;
 	}
+	Ps_map[0] = CTrapezoidalMap(ThermoTables_Pressure[0], ThermoTables_Entropy[0],
+			Table_Zone_Edges[0]);
+	Ps_map[1] = CTrapezoidalMap(ThermoTables_Pressure[1], ThermoTables_Entropy[1],
+			Table_Zone_Edges[1]);
 
 	if (rank == 12201) {
 		cout << "Building trapezoidal map for rhoT..." << endl;
 	}
+	rhoT_map[0] = CTrapezoidalMap(ThermoTables_Density[0],
+			ThermoTables_Temperature[0], Table_Zone_Edges[0]);
+	;
+	rhoT_map[1] = CTrapezoidalMap(ThermoTables_Density[1],
+			ThermoTables_Temperature[1], Table_Zone_Edges[1]);
+	;
 
 	if (rank == 12201) {
-		//cout << "Building trapezoidal map for PT..."<<endl;
 		cout << "Print LUT errors? (LUT_Debug_Mode):  " << LUT_Debug_Mode << endl;
 	}
 
@@ -205,158 +290,10 @@ void CLookUpTable::Get_Unique_Edges() {
 		//Make the list of edges unique
 		vector<vector<int> >::iterator iter;
 		iter = unique(Table_Zone_Edges[j].begin(), Table_Zone_Edges[j].end());
-		Table_Zone_Edges[j].resize(distance(Table_Zone_Edges[j].begin(),iter));
+		Table_Zone_Edges[j].resize(distance(Table_Zone_Edges[j].begin(), iter));
 	}
 
 //Filter out all the edges which have been imported twice
-}
-
-void CLookUpTable::Search_NonEquispaced_Rho_Index(su2double rho) {
-	{
-		su2double grad, x00, y00;
-		//  Determine the I index with binary search (rho is not assumed equispaced)
-		while (UpperI - LowerI > 1) {
-			middleI = (UpperI + LowerI) / 2;
-			x00 = ThermoTables_Density[middleI][LowerJ];
-			grad = ThermoTables_Density[middleI + 1][LowerJ] - x00;
-			if (x00 * grad > rho * grad) {
-				UpperI = middleI;
-			} else if (x00 < rho) {
-				LowerI = middleI;
-			} else if (x00 == rho) {
-				LowerI = middleI;
-				UpperI = LowerI + 1;
-				break;
-			}
-		}
-	}
-}
-void CLookUpTable::Search_NonEquispaced_P_Index(su2double P) {
-	su2double grad, x00, y00, y01, x01, RunVal;
-//Determine the J index using a binary search, and not assuming P is equispaced
-	while (UpperJ - LowerJ > 1) {
-		middleJ = (UpperJ + LowerJ) / 2;
-		x00 = ThermoTables_Pressure[LowerI][middleJ];
-		grad = ThermoTables_Pressure[LowerI][middleJ + 1] - x00;
-		if (x00 * grad > P * grad) {
-			UpperJ = middleJ;
-		} else if (x00 < P) {
-			LowerJ = middleJ;
-		} else if (x00 == P) {
-			LowerJ = middleJ;
-			UpperJ = LowerJ + 1;
-			break;
-		}
-	}
-}
-
-void CLookUpTable::Search_i_for_X_given_j(su2double x, su2double y,
-		vector< su2double > *ThermoTables_X, vector< su2double > *ThermoTables_Y) {
-	su2double grad, x00, y00, y01, x01, RunVal;
-	while (UpperI - LowerI > 1) {
-		middleI = (UpperI + LowerI) / 2;
-		//Use interpolated T as the running variable for the search (RunVal)
-		y00 = ThermoTables_Y[middleI][LowerJ];
-		y01 = ThermoTables_Y[middleI][UpperJ];
-		x00 = ThermoTables_X[middleI][LowerJ];
-		x01 = ThermoTables_X[middleI][UpperJ];
-		grad = ThermoTables_X[UpperI][LowerJ] - x00;
-		RunVal = x00 + (x01 - x00) / (y01 - y00) * (y - y00);
-		if (RunVal * grad > x * grad) {
-			UpperI = middleI;
-		} else if (RunVal * grad < x * grad) {
-			LowerI = middleI;
-		} else if (RunVal == x) {
-			LowerI = middleI;
-			UpperI = LowerI + 1;
-			break;
-		}
-	}
-}
-
-void CLookUpTable::Search_j_for_Y_given_i(su2double x, su2double y,
-		vector< su2double > *ThermoTables_X, vector< su2double > *ThermoTables_Y) {
-	su2double RunVal;
-	su2double grad, x00, y00, y10, x10;
-	while (UpperJ - LowerJ > 1) {
-		middleJ = (UpperJ + LowerJ) / 2; /*!< \brief Splitting index for the search */
-
-		// The variable names is composed of a (i,j) pair
-		y00 = ThermoTables_Y[LowerI][middleJ];
-		y10 = ThermoTables_Y[UpperI][middleJ];
-		x00 = ThermoTables_X[LowerI][middleJ];
-		x10 = ThermoTables_X[UpperI][middleJ];
-		//The search variable in j should be interpolated in i as well
-		RunVal = y00 + (y10 - y00) / (x10 - x00) * (x - x00);
-		grad = ThermoTables_Y[LowerI][middleJ + 1] - y00;
-		if (RunVal * grad > y * grad) {
-			UpperJ = middleJ;
-		} else if (RunVal * grad < y * grad) {
-			LowerJ = middleJ;
-		} else if (RunVal == y) {
-			LowerJ = middleJ;
-			UpperJ = LowerJ + 1;
-			break;
-		}
-	}
-}
-
-void CLookUpTable::Search_Linear_Skewed_Table(su2double x, su2double P,
-		vector< su2double > *ThermoTables_X) {
-	su2double RunVal, rho;
-	su2double grad, x00, y00, y10, x10;
-	while (UpperJ - LowerJ > 1) {
-		middleJ = (UpperJ + LowerJ) / 2; /*!< \brief Splitting index for the search */
-
-		// The variable names is composed of a (i,j) pair
-		y00 = ThermoTables_Pressure[0][middleJ];
-		y10 = ThermoTables_Pressure[nTable_Zone_Stations[1] - 1][middleJ];
-		x00 = ThermoTables_Density[0][middleJ];
-		x10 = ThermoTables_Density[nTable_Zone_Stations[1] - 1][middleJ];
-		//Using the input pressure and a given middleJ value,
-		//the corresponding density and iIndex may be determined
-		rho = (P - y00) * (x10 - x00) / (y10 - y00) + x00;
-		//If density is greater than the limits of the table,
-		//then search the upper part, if it is lower than the limits,
-		//search the lower part of the table
-		if (rho > Density_Table_Limits[1]) {
-			if (y10 > y00) {
-				LowerJ = middleJ;
-			} else if (y10 < y00) {
-				UpperJ = middleJ;
-			}
-		} else if (rho < Density_Table_Limits[0]) {
-			if (y10 > y00) {
-				UpperJ = middleJ;
-			} else if (y10 < y00) {
-				LowerJ = middleJ;
-			}
-		} else {
-			//If the density is within limits, calculate the iIndex that
-			//it corresponds to
-			UpperI = nTable_Zone_Stations[1] - 1;
-			LowerI = 0;
-			Search_NonEquispaced_Rho_Index(rho);
-			//Now an i,j index pair has been found, and can be used to
-			//guide the recursion further
-			y00 = ThermoTables_X[LowerI][middleJ];
-			y10 = ThermoTables_X[UpperI][middleJ];
-			x00 = ThermoTables_Density[LowerI][middleJ];
-			x10 = ThermoTables_Density[UpperI][middleJ];
-
-			RunVal = y00 + (y10 - y00) / (x10 - x00) * (rho - x00);
-			grad = ThermoTables_X[LowerI][middleJ + 1] - y00;
-			if (RunVal * grad > x * grad) {
-				UpperJ = middleJ;
-			} else if (RunVal * grad < x * grad) {
-				LowerJ = middleJ;
-			} else if (RunVal == x) {
-				LowerJ = middleJ;
-				UpperJ = LowerJ + 1;
-				break;
-			}
-		}
-	}
 }
 
 void CLookUpTable::SetTDState_rhoe(su2double rho, su2double e) {
@@ -370,22 +307,14 @@ void CLookUpTable::SetTDState_rhoe(su2double rho, su2double e) {
 			cerr << "RHOE Input StaticEnergy out of bounds\n";
 		}
 	}
+	rhoe_map[0].Find_Containing_Simplex(rho, e);
+	CurrentPoints[0] = Table_Zone_Edges[0][rhoe_map[0].getLowerEdge()][0];
+	CurrentPoints[1] = Table_Zone_Edges[0][rhoe_map[0].getLowerEdge()][1];
+	CurrentPoints[2] = Table_Zone_Edges[0][rhoe_map[0].getUpperEdge()][0];
+	CurrentPoints[3] = Table_Zone_Edges[0][rhoe_map[0].getUpperEdge()][1];
 
-// Starting values for the search
-	UpperJ = nTable_Zone_Stations[0] - 1;
-	LowerJ = 0;
-	UpperI = nTable_Zone_Stations[1] - 1;
-	LowerI = 0;
-
-//Searches involving density are independent of the skewness of the table
-//Fix the i index first
-	Search_NonEquispaced_Rho_Index(rho);
-//Having found the i index, search in j
-	Search_j_for_Y_given_i(rho, e, ThermoTables_Density,
-			ThermoTables_StaticEnergy);
-
-//Now use the quadrilateral which contains the point to interpolate
-//Determine the interpolation coefficients
+	//Now use the quadrilateral which contains the point to interpolate
+	//Determine the interpolation coefficients
 	Interpolate_2D_Bilinear_Arbitrary_Skew_Coeff(rho, e, ThermoTables_Density,
 			ThermoTables_StaticEnergy, "RHOE");
 
@@ -405,8 +334,8 @@ void CLookUpTable::SetTDState_rhoe(su2double rho, su2double e) {
 	Mu = Interpolate_2D_Bilinear(ThermoTables_Mu);
 	Kt = Interpolate_2D_Bilinear(ThermoTables_Kt);
 
-//Check that the interpolated density and pressure are within LUT limits
-	Check_Interpolated_PRHO_Limits("RHOE");
+	//Check that the interpolated density and pressure are within LUT limits
+	//Check_Interpolated_PRHO_Limits("RHOE");
 }
 
 void CLookUpTable::SetTDState_PT(su2double P, su2double T) {
@@ -420,20 +349,6 @@ void CLookUpTable::SetTDState_PT(su2double P, su2double T) {
 			cerr << "PT Input Temperature out of bounds\n";
 		}
 	}
-
-	UpperJ = nTable_Zone_Stations[0] - 1;
-	LowerJ = 0;
-	UpperI = nTable_Zone_Stations[1] - 1;
-	LowerI = 0;
-
-//Determine the j index first
-	Search_NonEquispaced_P_Index(P);
-//Having fixes the j index, find the i index
-	Search_i_for_X_given_j(T, P, ThermoTables_Temperature, ThermoTables_Pressure);
-
-	Search_Linear_Skewed_Table(T, P, ThermoTables_Temperature);
-//Finish of the search to check that the correct quad has indeed been selected
-//Although brief inspection shows correct element to be always selected before zig zag.
 
 //Determine interpolation coefficients
 	Interpolate_2D_Bilinear_Arbitrary_Skew_Coeff(T, P, ThermoTables_Temperature,
@@ -470,16 +385,6 @@ void CLookUpTable::SetTDState_Prho(su2double P, su2double rho) {
 		}
 	}
 
-	UpperJ = nTable_Zone_Stations[0] - 1;
-	LowerJ = 0;
-	UpperI = nTable_Zone_Stations[1] - 1;
-	LowerI = 0;
-
-	Search_NonEquispaced_Rho_Index(rho);
-	Search_NonEquispaced_P_Index(P);
-
-	Search_NonEquispaced_Rho_Index(rho);
-	Search_j_for_Y_given_i(rho, P, ThermoTables_Density, ThermoTables_Pressure);
 
 //Determine interpolation coefficients
 	Interpolate_2D_Bilinear_Arbitrary_Skew_Coeff(rho, P, ThermoTables_Density,
@@ -515,16 +420,6 @@ void CLookUpTable::SetEnergy_Prho(su2double P, su2double rho) {
 		}
 	}
 
-	UpperJ = nTable_Zone_Stations[0] - 1;
-	LowerJ = 0;
-	UpperI = nTable_Zone_Stations[1] - 1;
-	LowerI = 0;
-
-	Search_NonEquispaced_Rho_Index(rho);
-	Search_NonEquispaced_P_Index(P);
-
-	Search_NonEquispaced_Rho_Index(rho);
-	Search_j_for_Y_given_i(rho, P, ThermoTables_Density, ThermoTables_Pressure);
 
 //Determine interpolation coefficients
 	Interpolate_2D_Bilinear_Arbitrary_Skew_Coeff(rho, P, ThermoTables_Density,
@@ -585,11 +480,6 @@ void CLookUpTable::SetTDState_Ps(su2double P, su2double s) {
 		}
 	}
 
-	UpperJ = nTable_Zone_Stations[0] - 1;
-	LowerJ = 0;
-	UpperI = nTable_Zone_Stations[1] - 1;
-	LowerI = 0;
-
 //Determine interpolation coefficients
 	Interpolate_2D_Bilinear_Arbitrary_Skew_Coeff(s, P, ThermoTables_Entropy,
 			ThermoTables_Pressure, "PS");
@@ -625,16 +515,6 @@ void CLookUpTable::SetTDState_rhoT(su2double rho, su2double T) {
 			cerr << "RHOT Input Temperature out of bounds\n";
 		}
 	}
-// Linear interpolation requires 4 neighbors to be selected from the LUT
-
-	UpperJ = nTable_Zone_Stations[0] - 1;
-	LowerJ = 0;
-	UpperI = nTable_Zone_Stations[1] - 1;
-	LowerI = 0;
-
-	Search_NonEquispaced_Rho_Index(rho);
-	Search_j_for_Y_given_i(rho, T, ThermoTables_Density,
-			ThermoTables_Temperature);
 
 //Determine the interpolation coefficients
 	Interpolate_2D_Bilinear_Arbitrary_Skew_Coeff(rho, T, ThermoTables_Density,
@@ -674,208 +554,61 @@ void CLookUpTable::Check_Interpolated_PRHO_Limits(string interpolation_case) {
 	}
 }
 
-inline void CLookUpTable::Gaussian_Inverse(int nDim) {
-//A temporary matrix to hold the inverse, dynamically allocated
-	su2double **temp = new su2double*[nDim];
-	for (int i = 0; i < nDim; i++) {
-		temp[i] = new su2double[2 * nDim];
-	}
-
-//Copy the desired matrix into the temporary matrix
-	for (int i = 0; i < nDim; i++) {
-		for (int j = 0; j < nDim; j++) {
-			temp[i][j] = Interpolation_Matrix[i][j];
-			temp[i][nDim + j] = 0;
-		}
-		temp[i][nDim + i] = 1;
-	}
-
-	su2double max_val;
-	int max_idx;
-//Pivot each column such that the largest number possible divides the oter rows
-//The goal is to avoid zeros or small numbers in division.
-	for (int k = 0; k < nDim - 1; k++) {
-		max_idx = k;
-		max_val = abs(temp[k][k]);
-		//Find the largest value (pivot) in the column
-		for (int j = k; j < nDim; j++) {
-			if (abs(temp[j][k]) > max_val) {
-				max_idx = j;
-				max_val = abs(temp[j][k]);
-			}
-		}
-		//Move the row with the highest value up
-		for (int j = 0; j < (nDim * 2); j++) {
-			su2double d = temp[k][j];
-			temp[k][j] = temp[max_idx][j];
-			temp[max_idx][j] = d;
-		}
-		//Subtract the moved row from all other rows
-		for (int i = k + 1; i < nDim; i++) {
-			su2double c = temp[i][k] / temp[k][k];
-			for (int j = 0; j < (nDim * 2); j++) {
-				temp[i][j] = temp[i][j] - temp[k][j] * c;
-			}
-		}
-	}
-
-//Back-substitution
-	for (int k = nDim - 1; k > 0; k--) {
-		if (temp[k][k] != 0) {
-			for (int i = k - 1; i > -1; i--) {
-				su2double c = temp[i][k] / temp[k][k];
-				for (int j = 0; j < (nDim * 2); j++) {
-					temp[i][j] = temp[i][j] - temp[k][j] * c;
-				}
-			}
-		}
-	}
-//Normalize the inverse
-	for (int i = 0; i < nDim; i++) {
-		su2double c = temp[i][i];
-		for (int j = 0; j < nDim; j++) {
-			temp[i][j + nDim] = temp[i][j + nDim] / c;
-		}
-	}
-//Copy the inverse back to the main program flow
-	for (int i = 0; i < nDim; i++) {
-		for (int j = 0; j < nDim; j++) {
-			Interpolation_Coeff[i][j] = temp[i][j + nDim];
-		}
-	}
-//Delete dynamic template
-	for (int i = 0; i < nDim; i++) {
-		delete[] temp[i];
-	}
-	delete[] temp;
-	return;
-}
-
 void CLookUpTable::Interpolate_2D_Bilinear_Arbitrary_Skew_Coeff(su2double x,
 su2double y, vector< su2double > *ThermoTables_X,
 		vector< su2double > *ThermoTables_Y, std::string grid_var) {
-//The x,y coordinates of the quadrilateral
-	su2double x00, y00, x10, x01, x11, y10, y01, y11;
+	//The x,y coordinates of the quadrilateral
+	su2double x0, y0, x1, x2, y1, y2;
+	sort(CurrentPoints.begin(), CurrentPoints.end());
+	vector<int>::iterator iter = unique(CurrentPoints.begin(),
+			CurrentPoints.end());
+	CurrentPoints.resize(distance(CurrentPoints.begin(), iter));
 
-	x00 = ThermoTables_X[LowerI][LowerJ];
-	y00 = ThermoTables_Y[LowerI][LowerJ];
-	x01 = ThermoTables_X[LowerI][UpperJ];
-	y01 = ThermoTables_Y[LowerI][UpperJ];
-	x10 = ThermoTables_X[UpperI][LowerJ];
-	y10 = ThermoTables_Y[UpperI][LowerJ];
-	x11 = ThermoTables_X[UpperI][UpperJ];
-	y11 = ThermoTables_Y[UpperI][UpperJ];
+	x0 = ThermoTables_X[CurrentZone][CurrentPoints[0]];
+	y0 = ThermoTables_Y[CurrentZone][CurrentPoints[0]];
+	x1 = ThermoTables_X[CurrentZone][CurrentPoints[1]];
+	y1 = ThermoTables_Y[CurrentZone][CurrentPoints[1]];
+	x2 = ThermoTables_X[CurrentZone][CurrentPoints[2]];
+	y2 = ThermoTables_Y[CurrentZone][CurrentPoints[2]];
 
-//Check if x, y is indeed in the quad
-//The (true and not false) type of logic is needed as the both monotonically
-//increasing and monotonically decreasing functions need to pass the same test
-	bool BOTTOM, TOP, LEFT, RIGHT, OUT_OF_BOUNDS;
-	su2double dy, dx, dx10, dy10, dx01, dy01, dx11, dy11;
-	dx = x - x00;
-	dy = y - y00;
-	dx10 = x10 - x00;
-	dy10 = y10 - y00;
-	dx01 = x01 - x00;
-	dy01 = y01 - y00;
-	dx11 = x11 - x00;
-	dy11 = y11 - y00;
-	if (rank == 12201 and LUT_Debug_Mode) {
-		BOTTOM = (dy * dx10) < (dx * dy10);
-		TOP = ((dy - dy01) * (dx11 - dx01)) > ((dy11 - dy01) * (dx - dx01));
-		RIGHT = ((dx - dx10) * (dy11 - dy10)) > ((dx11 - dx10) * (dy - dy10));
-		LEFT = (dx * dy01) < (dx01 * dy);
-		OUT_OF_BOUNDS = false;
-		//Check BOTTOM quad boundary
-		if (BOTTOM and !TOP) {
-			OUT_OF_BOUNDS = true;
-			//Check if the point is also outside the LUT
-			if (LowerJ == 0) {
-				cerr << grid_var << ' ' << LowerI << ", " << LowerJ
-						<< " interpolation point lies below the LUT\n";
-			} else {
-				cerr << grid_var << ' ' << LowerI << ", " << LowerJ
-						<< " interpolation point lies below bottom boundary of selected quad\n";
-			}
-		}
-		//Check RIGHT quad boundary
-		if (RIGHT and !LEFT) {
-			OUT_OF_BOUNDS = true;
-			//Check if the point is also outside the LUT
-			if (LowerI == (nTable_Zone_Stations[1] - 2)) {
-				cerr << grid_var << ' ' << LowerI << ", " << LowerJ
-						<< " interpolation point lies right of the LUT\n";
-			} else {
-				cerr << grid_var << ' ' << LowerI << ", " << LowerJ
-						<< " interpolation point lies to the right of the boundary of selected quad\n";
-			}
-		}
-		//Check TOP quad boundary
-		if (TOP and !BOTTOM) {
-			OUT_OF_BOUNDS = true;
-			//Check if the point is also outside the LUT
-			if (LowerJ == (nTable_Zone_Stations[0] - 2)) {
-				cerr << grid_var << ' ' << LowerI << ", " << LowerJ
-						<< " interpolation point lies above the LUT\n";
-			} else {
-				cerr << grid_var << ' ' << LowerI << ", " << LowerJ
-						<< +" interpolation point lies above the boundary of selected quad\n";
-			}
-		}
-		//Check LEFT quad boundary
-		if (LEFT and !RIGHT) {
-			OUT_OF_BOUNDS = true;
-			//Check if the point is also outside the LUT
-			if (LowerI == 0) {
-				cerr << grid_var << ' ' << LowerI << ", " << LowerJ
-						<< " interpolation point lies left of the LUT\n";
-			} else {
-				cerr << grid_var << ' ' << LowerI << ", " << LowerJ
-						<< +" interpolation point lies to the left of the boundary of selected quad\n";
-			}
-		}
-	}
-
-//Setup the LHM matrix for the interpolation (Vandermonde)
+	//Setup the LHM matrix for the interpolation (Vandermonde)
 	Interpolation_Matrix[0][0] = 1;
 	Interpolation_Matrix[0][1] = 0;
 	Interpolation_Matrix[0][2] = 0;
-	Interpolation_Matrix[0][3] = 0;
 
 	Interpolation_Matrix[1][0] = 1;
-	Interpolation_Matrix[1][1] = x10 - x00;
-	Interpolation_Matrix[1][2] = y10 - y00;
-	Interpolation_Matrix[1][3] = (x10 - x00) * (y10 - y00);
+	Interpolation_Matrix[1][1] = x1 - x0;
+	Interpolation_Matrix[1][2] = y1 - y0;
 
 	Interpolation_Matrix[2][0] = 1;
-	Interpolation_Matrix[2][1] = x01 - x00;
-	Interpolation_Matrix[2][2] = y01 - y00;
-	Interpolation_Matrix[2][3] = (x01 - x00) * (y01 - y00);
+	Interpolation_Matrix[2][1] = x2 - x0;
+	Interpolation_Matrix[2][2] = y2 - y0;
 
-	Interpolation_Matrix[3][0] = 1;
-	Interpolation_Matrix[3][1] = x11 - x00;
-	Interpolation_Matrix[3][2] = y11 - y00;
-	Interpolation_Matrix[3][3] = (x11 - x00) * (y11 - y00);
+	//Invert the Interpolation matrix and take the transpose
+	Interpolation_Coeff[0][0] = 1;
+	Interpolation_Coeff[0][1] = (y1 - y2)
+			/ (x0 * y1 - x0 * y2 - x1 * y0 + x1 * y2 + x2 * y0 - x2 * y1);
+	Interpolation_Coeff[0][2] = (-x1 + x2)
+			/ (x0 * y1 - x0 * y2 - x1 * y0 + x1 * y2 + x2 * y0 - x2 * y1);
+	Interpolation_Coeff[1][0] = 0;
+	Interpolation_Coeff[1][1] = (-y0 + y2)
+			/ (x0 * y1 - x0 * y2 - x1 * y0 + x1 * y2 + x2 * y0 - x2 * y1);
+	Interpolation_Coeff[1][2] = (x0 - x2)
+			/ (x0 * y1 - x0 * y2 - x1 * y0 + x1 * y2 + x2 * y0 - x2 * y1);
+	Interpolation_Coeff[2][0] = 0;
+	Interpolation_Coeff[2][1] = (y0 - y1)
+			/ (x0 * y1 - x0 * y2 - x1 * y0 + x1 * y2 + x2 * y0 - x2 * y1);
+	Interpolation_Coeff[2][2] = (-x0 + x1)
+			/ (x0 * y1 - x0 * y2 - x1 * y0 + x1 * y2 + x2 * y0 - x2 * y1);
 
-//Invert the Interpolation matrix using Gaussian elimination with pivoting
-	Gaussian_Inverse(4);
+	//The transpose allows the same coefficients to be used
+	// for all Thermo variables (need only 4 coefficients)
 	su2double d;
-
-//Transpose the inverse
 	for (int i = 0; i < 3; i++) {
-		for (int j = i + 1; j < 4; j++) {
-			d = Interpolation_Coeff[i][j];
-			Interpolation_Coeff[i][j] = Interpolation_Coeff[j][i];
-			Interpolation_Coeff[j][i] = d;
-		}
-	}
-//The transpose allows the same coefficients to be used
-// for all Thermo variables (need only 4 coefficients)
-	for (int i = 0; i < 4; i++) {
 		d = 0;
 		d = d + Interpolation_Coeff[i][0] * 1;
-		d = d + Interpolation_Coeff[i][1] * (x - x00);
-		d = d + Interpolation_Coeff[i][2] * (y - y00);
-		d = d + Interpolation_Coeff[i][3] * (x - x00) * (y - y00);
+		d = d + Interpolation_Coeff[i][1] * (x - x0);
+		d = d + Interpolation_Coeff[i][2] * (y - y0);
 		Interpolation_Coeff[i][0] = d;
 	}
 	return;
@@ -884,20 +617,18 @@ su2double y, vector< su2double > *ThermoTables_X,
 su2double CLookUpTable::Interpolate_2D_Bilinear(
 		vector< su2double > *ThermoTables_Z) {
 //The function values at the 4 corners of the quad
-	su2double func_value_at_i0j0, func_value_at_i1j0, func_value_at_i0j1,
-			func_value_at_i1j1;
+	su2double func_value_1,func_value_2,func_value_3;
 
-	func_value_at_i0j0 = ThermoTables_Z[LowerI][LowerJ];
-	func_value_at_i1j0 = ThermoTables_Z[UpperI][LowerJ];
-	func_value_at_i0j1 = ThermoTables_Z[LowerI][UpperJ];
-	func_value_at_i1j1 = ThermoTables_Z[UpperI][UpperJ];
+	func_value_1 = ThermoTables_Z[CurrentZone][CurrentPoints[0]];
+	func_value_2 = ThermoTables_Z[CurrentZone][CurrentPoints[0]];
+	func_value_3 = ThermoTables_Z[CurrentZone][CurrentPoints[0]];
+
 //The Interpolation_Coeff values depend on location alone
 //and are the same regardless of function values
 	su2double result = 0;
-	result = result + Interpolation_Coeff[0][0] * func_value_at_i0j0;
-	result = result + Interpolation_Coeff[1][0] * func_value_at_i1j0;
-	result = result + Interpolation_Coeff[2][0] * func_value_at_i0j1;
-	result = result + Interpolation_Coeff[3][0] * func_value_at_i1j1;
+	result = result + Interpolation_Coeff[0][0] * func_value_1;
+	result = result + Interpolation_Coeff[1][0] * func_value_2;
+	result = result + Interpolation_Coeff[2][0] * func_value_3;
 
 	return result;
 }

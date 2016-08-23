@@ -41,12 +41,12 @@ int main() {
 	fstream fs;
 	int i;
 
-//	ft.open(timefile, fstream::out |fstream::trunc);
-//	ft<<"";
-//	ft.close();
-//	ft.open(timefile, fstream::app);
-//	ft.precision(17);
-//	assert(ft.is_open());
+	ft.open(timefile, fstream::out |fstream::trunc);
+	ft<<"";
+	ft.close();
+	ft.open(timefile, fstream::app);
+	ft.precision(17);
+	assert(ft.is_open());
 //
  	CLookUpTable LUT2 = CLookUpTable(tablefile);
 //
@@ -57,36 +57,36 @@ int main() {
 ////
 ////	//LUT2.SetTDState_rhoe(85, 570000);
 ////
-//	cout<<"--------------------------------------------------------------\n";
-//	cout<<"RHOE \n";
-//	fs.open("rhoe_in.dat", fstream::in);
-//	i=0;
-//	while(getline(fs,line))
-//	{
-//		istringstream in(line);
-//		in>>rho[i];
-//		in>>e[i];
-//		i++;
-//	}
-//	fs.close();
+  	cout<<"--------------------------------------------------------------\n";
+  	cout<<"RHOE \n";
+		fs.open("rhoe_in.dat", fstream::in);
+		i=0;
+		while(getline(fs,line))
+		{
+			istringstream in(line);
+			in>>rho[i];
+			in>>e[i];
+			i++;
+		}
+		fs.close();
 //
-//	//wipe the outfile before writing to it
-//	outfile = (char*) "rhoe_out.dat";
-//	fs.open(outfile, fstream::out |fstream::trunc);
-//	fs.close();
-//	for (int j=0; j<i;j++)
-//	{
-//			cout<<j<<endl;
-//			LUT2.SetTDState_rhoe(rho[j], e[j]);
-//			LUT2.RecordState(outfile);
-//	}
-//	clock_t rhoe_start = clock();
-//	for (int j=0; j<i;j++)
-//	{
-//		LUT2.SetTDState_rhoe(rho[j], e[j]);
-//	}
-//	duration = ((su2double)clock()-(su2double)rhoe_start)/((su2double)CLOCKS_PER_SEC);
-//	ft<<"rhoe time: "<<duration<<endl;
+//wipe the outfile before writing to it
+	outfile = (char*) "rhoe_out.dat";
+	fs.open(outfile, fstream::out |fstream::trunc);
+	fs.close();
+	for (int j=0; j<i;j++)
+	{
+			cout<<j<<endl;
+			LUT2.SetTDState_rhoe(rho[j], e[j]);
+			LUT2.RecordState(outfile);
+	}
+	clock_t rhoe_start = clock();
+	for (int j=0; j<i;j++)
+	{
+		LUT2.SetTDState_rhoe(rho[j], e[j]);
+	}
+	duration = ((su2double)clock()-(su2double)rhoe_start)/((su2double)CLOCKS_PER_SEC);
+	ft<<"rhoe time: "<<duration<<endl;
 ////
 ////
 ////
@@ -253,14 +253,14 @@ int main() {
 //	//LUT2.SetTDState_hs(531782, 2092);
 //	//LUT2.reset_Restart();
 //
-//	cout<<"------------------------------END--------------------------------\n";
-//	ft.close();
-//	delete[] rho;
-//	delete[] e;
-//	delete[] h;
-//	delete[] s;
-//	delete[] P;
-//	delete[] T;
-//	return 0;
+	cout<<"------------------------------END--------------------------------\n";
+	ft.close();
+	delete[] rho;
+	delete[] e;
+	delete[] h;
+	delete[] s;
+	delete[] P;
+	delete[] T;
+	return 0;
 	}
 
