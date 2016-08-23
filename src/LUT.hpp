@@ -18,12 +18,14 @@ class CTrapezoidalMap{
 protected:
 	//The unique values of x which exist in the data
 	vector< su2double > Unique_X_Bands;
+	vector< vector <su2double> > X_Limits_of_Edges;
 	//The value that each edge which intersects the band takes within that
 	//same band. Used to sort the edges
-	vector< pair < su2double,int > > Y_Value_of_Edge_Within_Band_And_Index;
+	vector< vector < pair < su2double,int > > > Y_Values_of_Edge_Within_Band_And_Index;
 public:
 	CTrapezoidalMap();
-	CTrapezoidalMap(vector< su2double > x_samples, vector< su2double > y_samples, vector< vector <int> > unique_edges);
+	CTrapezoidalMap(vector< su2double > const &x_samples,
+			vector< su2double >  const &y_samples, vector<vector<int> > const &unique_edges);
 	int Find_Containing_Simplex(su2double x, su2double y);
 
 };
