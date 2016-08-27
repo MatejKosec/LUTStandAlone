@@ -167,6 +167,7 @@ public:
 	 */
 	void Get_Unique_Edges();
 
+	void Get_Current_Points_From_TrapezoidalMap(CTrapezoidalMap *t_map, su2double x, su2double y);
 
 	void SetTDState_rhoe(su2double rho, su2double e);
 
@@ -223,16 +224,6 @@ public:
 
 	void Gaussian_Inverse(int nDim);
 
-	/*!
-	 * \brief Calculate the bilinear interpolation coefficients for a quad with arbitrary skew.
-	 *  The entails building the Vandermonde matrix, inverting it, transposing it, and dot product with the search values of x, and y.
-	 *  This formulation with the transpose means that the coefficients depend only on the x,y cooridinate of the search and
-	 *  not on the thermodynamic variable being interpolated. Thus, the same coefficients can be used across
-	 *  the interpolation of all desired thermodynamic properties.
-	 * \param[in] x - the x value used to set the thermodynamic state. (e.g. rho in rhoe)
-	 * \param[in] x - the y value used to set the thermodynamic state. (e.g. rho in e)
-	 * \param[in] grid_var - the pair of thermodynamic variables which define the grid i.e. the interpolation quad. (e.g. RHOE for rhoe)
-	 */
 
 	void Interpolate_2D_Bilinear_Arbitrary_Skew_Coeff(su2double x, su2double y, vector< su2double > *ThermoTables_X, vector< su2double > *ThermoTables_Y, std::string grid_var);
 
@@ -243,7 +234,6 @@ public:
 	 */
 
 	su2double Interpolate_2D_Bilinear(vector< su2double > *ThermoTables_Z);
-	void Check_Interpolated_PRHO_Limits(std::string interpolation_case);
 
 	/*!
 	 * \brief Load the LUT table from a CFX file format. X axis must be Density, and Y axis pressure. Equal spacing not required.

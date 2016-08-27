@@ -88,7 +88,7 @@ CTrapezoidalMap::CTrapezoidalMap(vector< su2double > const &x_samples,
 				//k counts the number of edges which have been found to intersect with the band
 				k++;
 			}
-			//increament i, which  moves the algorithm along to the next edge
+			//increment i, which  moves the algorithm along to the next edge
 			i++;
 		}
 		//Sort the edges in the band depending on the y values they were found to have
@@ -127,8 +127,9 @@ void CTrapezoidalMap::Search_Bands_For(su2double x) {
 		} else if (x00 == x) {
 			LowerI = middleI;
 			UpperI = LowerI + 1;
+			break;
 		}
-		break;
+
 	}
 }
 
@@ -141,7 +142,8 @@ void CTrapezoidalMap::Search_Band_For_Edge(su2double x, su2double y) {
 
 	while (UpperJ - LowerJ > 1) {
 		middleJ = (UpperJ + LowerJ) / 2;
-
+		//Select the edge associated with the current x band (LowerI)
+		//Search for the RunEdge in the middleJ direction (second value is index of edge)
 		RunEdge = Y_Values_of_Edge_Within_Band_And_Index[LowerI][middleJ].second;
 		y00 = Y_Limits_of_Edges[RunEdge][0];
 		y10 = Y_Limits_of_Edges[RunEdge][1];
@@ -156,8 +158,9 @@ void CTrapezoidalMap::Search_Band_For_Edge(su2double x, su2double y) {
 		} else if (RunVal == y) {
 			LowerJ = middleJ;
 			UpperJ = LowerJ + 1;
+			break;
 		}
-		break;
+
 	}
 	UpperEdge = Y_Values_of_Edge_Within_Band_And_Index[LowerI][UpperJ].second;
 	LowerEdge = Y_Values_of_Edge_Within_Band_And_Index[LowerI][LowerJ].second;
@@ -167,6 +170,7 @@ CLookUpTable::CLookUpTable(string Filename) {
 	LUT_Debug_Mode = false;
 	rank = 12201;
 	CurrentPoints.resize(4, 0);
+	CurrentZone = 1;		//The vapor region
 
 #ifdef HAVE_MPI
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -296,22 +300,24 @@ void CLookUpTable::Get_Unique_Edges() {
 //Filter out all the edges which have been imported twice
 }
 
+void CLookUpTable::Get_Current_Points_From_TrapezoidalMap(
+		CTrapezoidalMap *t_map, su2double x, su2double y) {
+	CurrentPoints.resize(4, 0);
+	t_map[CurrentZone].Find_Containing_Simplex(x, y);
+	CurrentPoints[0] =
+			Table_Zone_Edges[CurrentZone][t_map[CurrentZone].getLowerEdge()][0];
+	CurrentPoints[1] =
+			Table_Zone_Edges[CurrentZone][t_map[CurrentZone].getLowerEdge()][1];
+	CurrentPoints[2] =
+			Table_Zone_Edges[CurrentZone][t_map[CurrentZone].getUpperEdge()][0];
+	CurrentPoints[3] =
+			Table_Zone_Edges[CurrentZone][t_map[CurrentZone].getUpperEdge()][1];
+}
+
 void CLookUpTable::SetTDState_rhoe(su2double rho, su2double e) {
 // Check if inputs are in total range (necessary but not sufficient condition)
-	if (rank == 12201 and LUT_Debug_Mode) {
-		if ((rho > Density_Table_Limits[1]) or (rho < Density_Table_Limits[0])) {
-			cerr << "RHOE Input Density out of bounds\n";
-		}
-		if ((e > StaticEnergy_Table_Limits[1])
-				or (e < StaticEnergy_Table_Limits[0])) {
-			cerr << "RHOE Input StaticEnergy out of bounds\n";
-		}
-	}
-	rhoe_map[0].Find_Containing_Simplex(rho, e);
-	CurrentPoints[0] = Table_Zone_Edges[0][rhoe_map[0].getLowerEdge()][0];
-	CurrentPoints[1] = Table_Zone_Edges[0][rhoe_map[0].getLowerEdge()][1];
-	CurrentPoints[2] = Table_Zone_Edges[0][rhoe_map[0].getUpperEdge()][0];
-	CurrentPoints[3] = Table_Zone_Edges[0][rhoe_map[0].getUpperEdge()][1];
+
+	Get_Current_Points_From_TrapezoidalMap(rhoe_map, rho, e);
 
 	//Now use the quadrilateral which contains the point to interpolate
 	//Determine the interpolation coefficients
@@ -331,60 +337,23 @@ void CLookUpTable::SetTDState_rhoe(su2double rho, su2double e) {
 	dTdrho_e = Interpolate_2D_Bilinear(ThermoTables_dTdrho_e);
 	dTde_rho = Interpolate_2D_Bilinear(ThermoTables_dTde_rho);
 	Cp = Interpolate_2D_Bilinear(ThermoTables_Cp);
-	Mu = Interpolate_2D_Bilinear(ThermoTables_Mu);
-	Kt = Interpolate_2D_Bilinear(ThermoTables_Kt);
+	//Mu = Interpolate_2D_Bilinear(ThermoTables_Mu);
+	//Kt = Interpolate_2D_Bilinear(ThermoTables_Kt);
 
-	//Check that the interpolated density and pressure are within LUT limits
-	//Check_Interpolated_PRHO_Limits("RHOE");
 }
 
 void CLookUpTable::SetTDState_PT(su2double P, su2double T) {
 // Check if inputs are in total range (necessary but not sufficient condition)
 	if (rank == 12201) {
-		if ((P > Pressure_Table_Limits[1]) or (P < Pressure_Table_Limits[0])) {
-			cerr << "PT Input Pressure out of bounds\n";
-		}
-		if ((T > Temperature_Table_Limits[1])
-				or (T < Temperature_Table_Limits[0])) {
-			cerr << "PT Input Temperature out of bounds\n";
-		}
+		cout << "PT calls are not allowed by default\n";
+		exit(EXIT_FAILURE);
 	}
 
-//Determine interpolation coefficients
-	Interpolate_2D_Bilinear_Arbitrary_Skew_Coeff(T, P, ThermoTables_Temperature,
-			ThermoTables_Pressure, "PT");
-
-//Interpolate the fluid properties
-	Pressure = P;
-	Temperature = T;
-	StaticEnergy = Interpolate_2D_Bilinear(ThermoTables_StaticEnergy);
-	Enthalpy = Interpolate_2D_Bilinear(ThermoTables_Enthalpy);
-	Entropy = Interpolate_2D_Bilinear(ThermoTables_Entropy);
-	Density = Interpolate_2D_Bilinear(ThermoTables_Density);
-	SoundSpeed2 = Interpolate_2D_Bilinear(ThermoTables_SoundSpeed2);
-	dPdrho_e = Interpolate_2D_Bilinear(ThermoTables_dPdrho_e);
-	dPde_rho = Interpolate_2D_Bilinear(ThermoTables_dPde_rho);
-	dTdrho_e = Interpolate_2D_Bilinear(ThermoTables_dTdrho_e);
-	dTde_rho = Interpolate_2D_Bilinear(ThermoTables_dTde_rho);
-	Cp = Interpolate_2D_Bilinear(ThermoTables_Cp);
-	Mu = Interpolate_2D_Bilinear(ThermoTables_Mu);
-	Kt = Interpolate_2D_Bilinear(ThermoTables_Kt);
-
-//Check that the interpolated density and pressure are within LUT limits
-	Check_Interpolated_PRHO_Limits("PT");
 }
 
 void CLookUpTable::SetTDState_Prho(su2double P, su2double rho) {
-// Check if inputs are in total range (necessary and sufficient condition)
-	if (rank == 12201 and LUT_Debug_Mode) {
-		if ((P > Pressure_Table_Limits[1]) or (P < Pressure_Table_Limits[0])) {
-			cerr << "PRHO Input Pressure out of bounds\n";
-		}
-		if ((rho > Density_Table_Limits[1]) or (rho < Density_Table_Limits[0])) {
-			cerr << "PRHO Input Density out of bounds\n";
-		}
-	}
 
+	Get_Current_Points_From_TrapezoidalMap(Prho_map, P, rho);
 
 //Determine interpolation coefficients
 	Interpolate_2D_Bilinear_Arbitrary_Skew_Coeff(rho, P, ThermoTables_Density,
@@ -405,21 +374,11 @@ void CLookUpTable::SetTDState_Prho(su2double P, su2double rho) {
 	Mu = Interpolate_2D_Bilinear(ThermoTables_Mu);
 	Kt = Interpolate_2D_Bilinear(ThermoTables_Kt);
 
-//Check that the interpolated density and pressure are within LUT limits
-	Check_Interpolated_PRHO_Limits("PRHO");
 }
 
 void CLookUpTable::SetEnergy_Prho(su2double P, su2double rho) {
-// Check if inputs are in total range (necessary and sufficient condition)
-	if (rank == 12201 and LUT_Debug_Mode) {
-		if ((P > Pressure_Table_Limits[1]) or (P < Pressure_Table_Limits[0])) {
-			cerr << "PRHO Input Pressure out of bounds\n";
-		}
-		if ((rho > Density_Table_Limits[1]) or (rho < Density_Table_Limits[0])) {
-			cerr << "PRHO Input Density out of bounds\n";
-		}
-	}
 
+	Get_Current_Points_From_TrapezoidalMap(Prho_map, P, rho);
 
 //Determine interpolation coefficients
 	Interpolate_2D_Bilinear_Arbitrary_Skew_Coeff(rho, P, ThermoTables_Density,
@@ -428,22 +387,11 @@ void CLookUpTable::SetEnergy_Prho(su2double P, su2double rho) {
 	Pressure = P;
 	Density = rho;
 
-	Check_Interpolated_PRHO_Limits("PRHO (energy)");
 }
 
 void CLookUpTable::SetTDState_hs(su2double h, su2double s) {
-// Check if inputs are in total range (necessary and sufficient condition)
-	if (rank == 12201 and LUT_Debug_Mode) {
-		if ((h > Enthalpy_Table_Limits[1]) or (h < Enthalpy_Table_Limits[0])) {
-			cerr << "HS Input Enthalpy out of bounds\n";
-		}
-		if ((s > Entropy_Table_Limits[1]) or (s < Entropy_Table_Limits[0])) {
-			cerr << "HS Input Entropy out of bounds\n";
-		}
-	}
 
-//Preset the distance variables to something large, so they can be subsituted
-//by any point in the table.
+	Get_Current_Points_From_TrapezoidalMap(hs_map, h, s);
 
 //Determine interpolation coefficients
 	Interpolate_2D_Bilinear_Arbitrary_Skew_Coeff(h, s, ThermoTables_Enthalpy,
@@ -465,20 +413,11 @@ void CLookUpTable::SetTDState_hs(su2double h, su2double s) {
 	Mu = Interpolate_2D_Bilinear(ThermoTables_Mu);
 	Kt = Interpolate_2D_Bilinear(ThermoTables_Kt);
 
-	Check_Interpolated_PRHO_Limits("HS");
-
 }
 
 void CLookUpTable::SetTDState_Ps(su2double P, su2double s) {
-// Check if inputs are in total range (necessary and sufficient condition)
-	if (rank == 12201 and LUT_Debug_Mode) {
-		if ((P > Pressure_Table_Limits[1]) or (P < Pressure_Table_Limits[0])) {
-			cerr << "PS Input Pressure out of bounds\n";
-		}
-		if ((s > Entropy_Table_Limits[1]) or (s < Entropy_Table_Limits[0])) {
-			cerr << "PS Input Entropy  out of bounds\n";
-		}
-	}
+
+	Get_Current_Points_From_TrapezoidalMap(Ps_map, P, s);
 
 //Determine interpolation coefficients
 	Interpolate_2D_Bilinear_Arbitrary_Skew_Coeff(s, P, ThermoTables_Entropy,
@@ -500,22 +439,11 @@ void CLookUpTable::SetTDState_Ps(su2double P, su2double s) {
 	Mu = Interpolate_2D_Bilinear(ThermoTables_Mu);
 	Kt = Interpolate_2D_Bilinear(ThermoTables_Kt);
 
-//Check that the interpolated density and pressure are within LUT limits
-	Check_Interpolated_PRHO_Limits("PS");
 }
 
 void CLookUpTable::SetTDState_rhoT(su2double rho, su2double T) {
-// Check if inputs are in total range (necessary and sufficient condition)
-	if (rank == 12201 and LUT_Debug_Mode) {
-		if ((rho > Density_Table_Limits[1]) or (rho < Density_Table_Limits[0])) {
-			cerr << "RHOT Input Density out of bounds\n";
-		}
-		if ((T > Temperature_Table_Limits[1])
-				or (T < Temperature_Table_Limits[0])) {
-			cerr << "RHOT Input Temperature out of bounds\n";
-		}
-	}
 
+	Get_Current_Points_From_TrapezoidalMap(rhoT_map, rho, T);
 //Determine the interpolation coefficients
 	Interpolate_2D_Bilinear_Arbitrary_Skew_Coeff(rho, T, ThermoTables_Density,
 			ThermoTables_Temperature, "RHOT");
@@ -536,22 +464,6 @@ void CLookUpTable::SetTDState_rhoT(su2double rho, su2double T) {
 	Mu = Interpolate_2D_Bilinear(ThermoTables_Mu);
 	Kt = Interpolate_2D_Bilinear(ThermoTables_Kt);
 
-//Check that the interpolated density and pressure are within LUT limits
-	Check_Interpolated_PRHO_Limits("RHOT");
-}
-
-void CLookUpTable::Check_Interpolated_PRHO_Limits(string interpolation_case) {
-//Check that the interpolated density and pressure are within LUT limits
-	if (rank == 12201 and LUT_Debug_Mode) {
-		if ((Density > Density_Table_Limits[1])
-				or (Density < Density_Table_Limits[0])) {
-			cerr << interpolation_case << " Interpolated Density out of bounds\n";
-		}
-		if ((Pressure > Pressure_Table_Limits[1])
-				or (Pressure < Pressure_Table_Limits[0])) {
-			cerr << interpolation_case << " Interpolated Pressure out of bounds\n";
-		}
-	}
 }
 
 void CLookUpTable::Interpolate_2D_Bilinear_Arbitrary_Skew_Coeff(su2double x,
@@ -617,11 +529,11 @@ su2double y, vector< su2double > *ThermoTables_X,
 su2double CLookUpTable::Interpolate_2D_Bilinear(
 		vector< su2double > *ThermoTables_Z) {
 //The function values at the 4 corners of the quad
-	su2double func_value_1,func_value_2,func_value_3;
+	su2double func_value_1, func_value_2, func_value_3;
 
 	func_value_1 = ThermoTables_Z[CurrentZone][CurrentPoints[0]];
-	func_value_2 = ThermoTables_Z[CurrentZone][CurrentPoints[0]];
-	func_value_3 = ThermoTables_Z[CurrentZone][CurrentPoints[0]];
+	func_value_2 = ThermoTables_Z[CurrentZone][CurrentPoints[1]];
+	func_value_3 = ThermoTables_Z[CurrentZone][CurrentPoints[2]];
 
 //The Interpolation_Coeff values depend on location alone
 //and are the same regardless of function values
@@ -747,7 +659,13 @@ void CLookUpTable::LookUpTable_Load_TEC(std::string filename) {
 				in >> Table_Zone_Triangles[zone_scanned][j][0]
 						>> Table_Zone_Triangles[zone_scanned][j][1]
 						>> Table_Zone_Triangles[zone_scanned][j][2];
+				//Triangles in .tec file are indexed from 1
+				//In cpp it is more convenient to start with 0.
+				Table_Zone_Triangles[zone_scanned][j][0]--;
+				Table_Zone_Triangles[zone_scanned][j][1]--;
+				Table_Zone_Triangles[zone_scanned][j][2]--;
 			}
+
 			zone_scanned++;
 		}
 	}
@@ -784,16 +702,16 @@ void CLookUpTable::LookUpTable_Malloc(int Index_of_Zone) {
 			nTable_Zone_Stations[Index_of_Zone], 0);
 	ThermoTables_Mu[Index_of_Zone] = vector< su2double >(
 			nTable_Zone_Stations[Index_of_Zone], 0);
-	ThermoTables_dmudrho_T[Index_of_Zone] = vector< su2double >(
-			nTable_Zone_Stations[Index_of_Zone], 0);
-	ThermoTables_dmudT_rho[Index_of_Zone] = vector< su2double >(
-			nTable_Zone_Stations[Index_of_Zone], 0);
+	//ThermoTables_dmudrho_T[Index_of_Zone] = vector< su2double >(
+	//	nTable_Zone_Stations[Index_of_Zone], 0);
+	//ThermoTables_dmudT_rho[Index_of_Zone] = vector< su2double >(
+	//	nTable_Zone_Stations[Index_of_Zone], 0);
 	ThermoTables_Kt[Index_of_Zone] = vector< su2double >(
 			nTable_Zone_Stations[Index_of_Zone], 0);
-	ThermoTables_dktdrho_T[Index_of_Zone] = vector< su2double >(
-			nTable_Zone_Stations[Index_of_Zone], 0);
-	ThermoTables_dktdT_rho[Index_of_Zone] = vector< su2double >(
-			nTable_Zone_Stations[Index_of_Zone], 0);
+	//ThermoTables_dktdrho_T[Index_of_Zone] = vector< su2double >(
+	//		nTable_Zone_Stations[Index_of_Zone], 0);
+	//ThermoTables_dktdT_rho[Index_of_Zone] = vector< su2double >(
+	//		nTable_Zone_Stations[Index_of_Zone], 0);
 	Table_Zone_Triangles[Index_of_Zone] = vector<vector<int> >(
 			nTable_Zone_Triangles[Index_of_Zone]);
 	for (int j = 0; j < nTable_Zone_Triangles[Index_of_Zone]; j++) {

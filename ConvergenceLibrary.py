@@ -165,7 +165,7 @@ class SciPy_InterpolatedData(ThermoData):
         
         variables = sp.array(['Temperature','Density','Enthalpy','StaticEnergy',\
         'Entropy','Pressure','SoundSpeed2','dPdrho_e','dPde_rho',\
-        'dTdrho_e','dTde_rho','Cp','Mu','Kt']);
+        'dTdrho_e','dTde_rho','Cp'])#,'Mu','Kt']);
         
         for var in variables[sp.where((variables!=thermo1) * (variables!=thermo2))]:
             z = getattr(LUT,var)            
@@ -318,7 +318,7 @@ class RefinementLevel(object):
         i=0;
         thermo1 = self.select[which_case][0]
         thermo2 = self.select[which_case][1]
-        get_REL_ERR_SU2(self,which_case)
+        self.get_REL_ERR_SU2(which_case)
         
         print 'Median error SU2', sp.median(self.REL_ERR)
         print 'Mean error SU2', sp.mean(self.REL_ERR)
@@ -327,10 +327,10 @@ class RefinementLevel(object):
         x = getattr(self.SU2[which_case],thermo1)
         y = getattr(self.SU2[which_case],thermo2)
         #trusted_values = sp.where(self.REL_ERR>0<0.9*max(self.REL_ERR))
-        self.REL_ERR = self.REL_ERR[trusted_values]
-        x = x[trusted_values]
-        y = y[trusted_values]
-        scat=plt.scatter(x,y,c=self.REL_ERR, s=1)                
+        #self.REL_ERR = self.REL_ERR[trusted_values]
+        #x = x[trusted_values]
+        #y = y[trusted_values]
+        scat=plt.scatter(x,y,c=self.REL_ERR)                
         plt.grid(which='both')
         scat.set_array(self.REL_ERR)        
         plt.colorbar(scat)
