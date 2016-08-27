@@ -79,7 +79,7 @@ protected:
 	su2double Energy_Reference_Value;
 
 	//Put the trapezoidal maps into variables
-	CTrapezoidalMap rhoe_map[2],Prho_map[2],hs_map[2],Ps_map[2],rhoT_map[2];
+	CTrapezoidalMap rhoe_map[2],Prho_map[2],hs_map[2],Ps_map[2],rhoT_map[2], PT_map[2];
 
 	su2double StaticEnergy, /*!< \brief Internal Energy. */
 	Entropy, /*!< \brief Entropy. */
@@ -126,24 +126,7 @@ protected:
 	int nTable_Zone_Triangles[2]; /*!< \brief Number of triangles in the '2' zones of the LuT (must be triangles for now)*/
 	vector< vector <int> > Table_Zone_Triangles[2];  /*!< \brief The triangles in each zone are stored as three intgers (the tree defining data-points)*/
 	vector< vector <int> > Table_Zone_Edges[2]; /*!< \brief Number of edges in the '2' zones of the LuT*/
-	su2double StaticEnergy_Table_Limits[2]; /*!< \brief The [min,max] values of the StaticEnergy values in the LUT */
-	su2double Entropy_Table_Limits[2]; /*!< \brief The [min,max] values of the Entropy values in the LUT */
-	su2double Enthalpy_Table_Limits[2]; /*!< \brief The [min,max] values of the Enthalpy values in the LUT */
-	su2double Density_Table_Limits[2];/*!< \brief The [min,max] values of the Density values in the LUT */
-	su2double Pressure_Table_Limits[2];/*!< \brief The [min,max] values of the Pressure values in the LUT */
-	su2double SoundSpeed2_Table_Limits[2]; /*!< \brief The [min,max] values of the SoundSpeed squared values in the LUT */
-	su2double Temperature_Table_Limits[2];/*!< \brief The [min,max] values of the Temperature values in the LUT */
-	su2double dPdrho_e_Table_Limits[2];/*!< \brief The [min,max] values of the dPdrho_e  values in the LUT */
-	su2double dPde_rho_Table_Limits[2];/*!< \brief The [min,max] values of the dPde_rho  values in the LUT */
-	su2double dTdrho_e_Table_Limits[2];/*!< \brief The [min,max] values of the dPde_rho  values in the LUT */
-	su2double dTde_rho_Table_Limits[2];/*!< \brief The [min,max] values of the dPde_rho  values in the LUT */
-	su2double Cp_Table_Limits[2];/*!< \brief The [min,max] values of the dPde_rho  values in the LUT */
-	su2double Mu_Table_Limits[2];/*!< \brief The [min,max] values of the dPde_rho  values in the LUT */
-	su2double dmudrho_T_Table_Limits[2];/*!< \brief (UNUSED) The [min,max] values of the dmudrho_T  values in the LUT */
-	su2double dmudT_rho_Table_Limits[2];/*!< \brief (UNUSED) The [min,max] values of the dmudT_rho  values in the LUT */
-	su2double Kt_Table_Limits[2];/*!< \brief The [min,max] values of the Kt values in the LUT */
-	su2double dktdrho_T_Table_Limits[2];/*!< \brief (UNUSED) The [min,max] values of the dktdrho_T values in the LUT */
-	su2double dktdT_rho_Table_Limits[2];/*!< \brief (UNUSED) The [min,max] values of the dktdT_rho values in the LUT */
+
 
 public:
 

@@ -89,29 +89,28 @@ int main() {
 ////
 ////
 ////
-//cout<<"--------------------------------------------------------------\n";
-//	cout<<"PT"<<endl;
-//
-//	fs.open("PT_in.dat", fstream::in);
-//	i=0;
-//	while(getline(fs,line))
-//	{
-//		istringstream in(line);
-//		in>>P[i];
-//		in>>T[i];
-//		i++;
-//	}
-//	fs.close();
-//	//wipe the outfile before writing to it
-//	outfile = (char*) "PT_out.dat";
-//	fs.open(outfile, fstream::out |fstream::trunc);
-//	fs.close();
-//	for (int j=0; j<i;j++)
-//		{
-//			cout<<j<<endl;
-//			LUT2.SetTDState_PT(P[j], T[j]);
-//			LUT2.RecordState(outfile);
-//		}
+cout<<"--------------------------------------------------------------\n";
+	cout<<"PT"<<endl;
+
+	fs.open("PT_in.dat", fstream::in);
+	i=0;
+	while(getline(fs,line))
+	{
+		istringstream in(line);
+		in>>P[i];
+		in>>T[i];
+		i++;
+	}
+	fs.close();
+	//wipe the outfile before writing to it
+	outfile = (char*) "PT_out.dat";
+	fs.open(outfile, fstream::out |fstream::trunc);
+	fs.close();
+	for (int j=0; j<i;j++)
+		{
+			LUT2.SetTDState_PT(P[j], T[j]);
+			LUT2.RecordState(outfile);
+		}
 //	clock_t PT_start = clock();
 //	for (int j=0; j<i;j++)
 //	{

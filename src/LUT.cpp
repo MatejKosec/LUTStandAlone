@@ -259,6 +259,15 @@ CLookUpTable::CLookUpTable(string Filename) {
 	;
 
 	if (rank == 12201) {
+		cout << "Building trapezoidal map for PT (in vapor region only)..." << endl;
+	}
+	PT_map[1] = CTrapezoidalMap(ThermoTables_Pressure[1],
+			ThermoTables_Temperature[1], Table_Zone_Edges[1]);
+	;
+	PT_map[0] = PT_map[1];
+
+
+	if (rank == 12201) {
 		cout << "Print LUT errors? (LUT_Debug_Mode):  " << LUT_Debug_Mode << endl;
 	}
 
@@ -337,19 +346,37 @@ void CLookUpTable::SetTDState_rhoe(su2double rho, su2double e) {
 	dTdrho_e = Interpolate_2D_Bilinear(ThermoTables_dTdrho_e);
 	dTde_rho = Interpolate_2D_Bilinear(ThermoTables_dTde_rho);
 	Cp = Interpolate_2D_Bilinear(ThermoTables_Cp);
-	//Mu = Interpolate_2D_Bilinear(ThermoTables_Mu);
-	//Kt = Interpolate_2D_Bilinear(ThermoTables_Kt);
+	Mu = Interpolate_2D_Bilinear(ThermoTables_Mu);
+	Kt = Interpolate_2D_Bilinear(ThermoTables_Kt);
 
 }
 
 void CLookUpTable::SetTDState_PT(su2double P, su2double T) {
 // Check if inputs are in total range (necessary but not sufficient condition)
-	if (rank == 12201) {
-		cout << "PT calls are not allowed by default\n";
-		exit(EXIT_FAILURE);
+
+	// Check if inputs are in total range (necessary but not sufficient condition)
+		Get_Current_Points_From_TrapezoidalMap(PT_map, P, T);
+		//Determine interpolation coefficients
+		Interpolate_2D_Bilinear_Arbitrary_Skew_Coeff(P, T, ThermoTables_Pressure,
+				ThermoTables_Temperature, "PT");
+		//Interpolate the fluid properties
+		Pressure = P;
+		Density = Interpolate_2D_Bilinear(ThermoTables_Density);
+		StaticEnergy = Interpolate_2D_Bilinear(ThermoTables_StaticEnergy);
+		Enthalpy = Interpolate_2D_Bilinear(ThermoTables_Enthalpy);
+		Entropy = Interpolate_2D_Bilinear(ThermoTables_Entropy);
+		SoundSpeed2 = Interpolate_2D_Bilinear(ThermoTables_SoundSpeed2);
+		Temperature = T;
+		dPdrho_e = Interpolate_2D_Bilinear(ThermoTables_dPdrho_e);
+		dPde_rho = Interpolate_2D_Bilinear(ThermoTables_dPde_rho);
+		dTdrho_e = Interpolate_2D_Bilinear(ThermoTables_dTdrho_e);
+		dTde_rho = Interpolate_2D_Bilinear(ThermoTables_dTde_rho);
+		Cp = Interpolate_2D_Bilinear(ThermoTables_Cp);
+		Mu = Interpolate_2D_Bilinear(ThermoTables_Mu);
+		Kt = Interpolate_2D_Bilinear(ThermoTables_Kt);
+
 	}
 
-}
 
 void CLookUpTable::SetTDState_Prho(su2double P, su2double rho) {
 
