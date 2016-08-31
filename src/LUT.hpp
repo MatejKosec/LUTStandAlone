@@ -14,21 +14,22 @@ using namespace std;
  * \version 4.1.2 "Cardinal"
  */
 
-class CTrapezoidalMap{
+class CTrapezoidalMap {
 protected:
 	int rank, UpperI, LowerI, middleI, LowerJ, UpperJ, middleJ;
-	int UpperEdge, LowerEdge;
+	int UpperEdge, MiddleEdge, LowerEdge;
 	//The unique values of x which exist in the data
-	vector< su2double > Unique_X_Bands;
-	vector< vector <int> >  Unique_Edges;
-	vector< vector <su2double> > X_Limits_of_Edges, Y_Limits_of_Edges;
+	vector<su2double> Unique_X_Bands;
+	vector<vector<int> > Unique_Edges;
+	vector<vector<su2double> > X_Limits_of_Edges, Y_Limits_of_Edges;
 	//The value that each edge which intersects the band takes within that
 	//same band. Used to sort the edges
-	vector< vector < pair < su2double,int > > > Y_Values_of_Edge_Within_Band_And_Index;
+	vector<vector<pair<su2double, int> > > Y_Values_of_Edge_Within_Band_And_Index;
 public:
 	CTrapezoidalMap();
-	CTrapezoidalMap(vector< su2double > const &x_samples,
-			vector< su2double >  const &y_samples, vector<vector<int> > const &unique_edges);
+	CTrapezoidalMap(vector<su2double> const &x_samples,
+			vector<su2double> const &y_samples,
+			vector<vector<int> > const &unique_edges);
 	void Find_Containing_Simplex(su2double x, su2double y);
 	void Search_Bands_For(su2double x);
 	void Search_Band_For_Edge(su2double x, su2double y);
@@ -56,6 +57,9 @@ public:
 	int getUpperEdge() const {
 		return UpperEdge;
 	}
+	int getMiddleEdge() const {
+			return MiddleEdge;
+		}
 };
 
 
@@ -208,7 +212,7 @@ public:
 	void Gaussian_Inverse(int nDim);
 
 
-	void Interpolate_2D_Bilinear_Arbitrary_Skew_Coeff(su2double x, su2double y, vector< su2double > *ThermoTables_X, vector< su2double > *ThermoTables_Y, std::string grid_var);
+	void Interpolate_2D_Bilinear(su2double x, su2double y, vector< su2double > *ThermoTables_X, vector< su2double > *ThermoTables_Y, std::string grid_var);
 
 
 	/*!

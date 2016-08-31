@@ -98,6 +98,9 @@ CTrapezoidalMap::CTrapezoidalMap(vector< su2double > const &x_samples,
 		//Move on to the next band of x values
 		b++;
 	}
+	//Initialize the search to table limits
+	UpperI = Unique_X_Bands.size() - 1;
+	LowerI = 0;
 
 	su2double duration = ((su2double) clock() - (su2double) build_start)
 			/ ((su2double) CLOCKS_PER_SEC);
@@ -113,24 +116,33 @@ void CTrapezoidalMap::Find_Containing_Simplex(su2double x, su2double y) {
 }
 
 void CTrapezoidalMap::Search_Bands_For(su2double x) {
-	su2double x00;
-	UpperI = Unique_X_Bands.size() - 1;
-	LowerI = 0;
+	su2double x_middle, x_lower, x_upper;
 
-	while (UpperI - LowerI > 1) {
+	do {
 		middleI = (UpperI + LowerI) / 2;
-		x00 = Unique_X_Bands[middleI];
-		if (x00 > x) {
+		x_middle = Unique_X_Bands[middleI];
+		x_lower = Unique_X_Bands[LowerI];
+		x_upper = Unique_X_Bands[UpperI];
+		//Step used for restarting the search on the low end
+		if (x < x_lower) {
+			UpperI = LowerI;
+			LowerI = LowerI / 2;
+			//Step used for restarting the search on the upper end
+		} else if (x > x_upper) {
+			LowerI = UpperI;
+			UpperI = (UpperI + (Unique_X_Bands.size() - 1)) / 2;
+			//After the restart is cleared, do the normal binary search
+		} else if (x < x_middle) {
 			UpperI = middleI;
-		} else if (x00 < x) {
+		} else if (x > x_middle) {
 			LowerI = middleI;
-		} else if (x00 == x) {
+		} else if (x_middle == x) {
 			LowerI = middleI;
 			UpperI = LowerI + 1;
 			break;
 		}
 
-	}
+	} while (UpperI - LowerI > 1);
 }
 
 void CTrapezoidalMap::Search_Band_For_Edge(su2double x, su2double y) {
@@ -162,8 +174,17 @@ void CTrapezoidalMap::Search_Band_For_Edge(su2double x, su2double y) {
 		}
 
 	}
-	UpperEdge = Y_Values_of_Edge_Within_Band_And_Index[LowerI][UpperJ].second;
-	LowerEdge = Y_Values_of_Edge_Within_Band_And_Index[LowerI][LowerJ].second;
+	if (UpperJ < (Y_Values_of_Edge_Within_Band_And_Index[LowerI].size() - 1)) {
+		UpperEdge =
+				Y_Values_of_Edge_Within_Band_And_Index[LowerI][UpperJ + 1].second;
+		MiddleEdge = Y_Values_of_Edge_Within_Band_And_Index[LowerI][UpperJ].second;
+		LowerEdge = Y_Values_of_Edge_Within_Band_And_Index[LowerI][LowerJ].second;
+	} else {
+		UpperEdge = Y_Values_of_Edge_Within_Band_And_Index[LowerI][UpperJ].second;
+		MiddleEdge = Y_Values_of_Edge_Within_Band_And_Index[LowerI][LowerJ].second;
+		LowerEdge =
+				Y_Values_of_Edge_Within_Band_And_Index[LowerI][LowerJ - 1].second;
+	}
 }
 
 CLookUpTable::CLookUpTable(string Filename) {
@@ -311,17 +332,23 @@ void CLookUpTable::Get_Unique_Edges() {
 
 void CLookUpTable::Get_Current_Points_From_TrapezoidalMap(
 		CTrapezoidalMap *t_map, su2double x, su2double y) {
-	CurrentPoints.resize(4, 0);
+	CurrentPoints.resize(6, 0);
 	t_map[CurrentZone].Find_Containing_Simplex(x, y);
+
 	CurrentPoints[0] =
 			Table_Zone_Edges[CurrentZone][t_map[CurrentZone].getLowerEdge()][0];
 	CurrentPoints[1] =
 			Table_Zone_Edges[CurrentZone][t_map[CurrentZone].getLowerEdge()][1];
 	CurrentPoints[2] =
-			Table_Zone_Edges[CurrentZone][t_map[CurrentZone].getUpperEdge()][0];
+			Table_Zone_Edges[CurrentZone][t_map[CurrentZone].getMiddleEdge()][0];
 	CurrentPoints[3] =
+			Table_Zone_Edges[CurrentZone][t_map[CurrentZone].getMiddleEdge()][1];
+	CurrentPoints[4] =
+			Table_Zone_Edges[CurrentZone][t_map[CurrentZone].getUpperEdge()][0];
+	CurrentPoints[5] =
 			Table_Zone_Edges[CurrentZone][t_map[CurrentZone].getUpperEdge()][1];
 }
+
 
 void CLookUpTable::SetTDState_rhoe(su2double rho, su2double e) {
 // Check if inputs are in total range (necessary but not sufficient condition)
@@ -330,7 +357,7 @@ void CLookUpTable::SetTDState_rhoe(su2double rho, su2double e) {
 
 	//Now use the quadrilateral which contains the point to interpolate
 	//Determine the interpolation coefficients
-	Interpolate_2D_Bilinear_Arbitrary_Skew_Coeff(rho, e, ThermoTables_Density,
+	Interpolate_2D_Bilinear(rho, e, ThermoTables_Density,
 			ThermoTables_StaticEnergy, "RHOE");
 
 //Interpolate the fluid properties
@@ -357,7 +384,7 @@ void CLookUpTable::SetTDState_PT(su2double P, su2double T) {
 	// Check if inputs are in total range (necessary but not sufficient condition)
 		Get_Current_Points_From_TrapezoidalMap(PT_map, P, T);
 		//Determine interpolation coefficients
-		Interpolate_2D_Bilinear_Arbitrary_Skew_Coeff(P, T, ThermoTables_Pressure,
+		Interpolate_2D_Bilinear(P, T, ThermoTables_Pressure,
 				ThermoTables_Temperature, "PT");
 		//Interpolate the fluid properties
 		Pressure = P;
@@ -383,7 +410,7 @@ void CLookUpTable::SetTDState_Prho(su2double P, su2double rho) {
 	Get_Current_Points_From_TrapezoidalMap(Prho_map, P, rho);
 
 //Determine interpolation coefficients
-	Interpolate_2D_Bilinear_Arbitrary_Skew_Coeff(rho, P, ThermoTables_Density,
+	Interpolate_2D_Bilinear(rho, P, ThermoTables_Density,
 			ThermoTables_Pressure, "PRHO");
 //Interpolate the fluid properties
 	Pressure = P;
@@ -408,7 +435,7 @@ void CLookUpTable::SetEnergy_Prho(su2double P, su2double rho) {
 	Get_Current_Points_From_TrapezoidalMap(Prho_map, P, rho);
 
 //Determine interpolation coefficients
-	Interpolate_2D_Bilinear_Arbitrary_Skew_Coeff(rho, P, ThermoTables_Density,
+	Interpolate_2D_Bilinear(rho, P, ThermoTables_Density,
 			ThermoTables_Pressure, "PRHO");
 	StaticEnergy = Interpolate_2D_Bilinear(ThermoTables_StaticEnergy);
 	Pressure = P;
@@ -421,7 +448,7 @@ void CLookUpTable::SetTDState_hs(su2double h, su2double s) {
 	Get_Current_Points_From_TrapezoidalMap(hs_map, h, s);
 
 //Determine interpolation coefficients
-	Interpolate_2D_Bilinear_Arbitrary_Skew_Coeff(h, s, ThermoTables_Enthalpy,
+	Interpolate_2D_Bilinear(h, s, ThermoTables_Enthalpy,
 			ThermoTables_Entropy, "HS");
 
 //Interpolate the fluid properties
@@ -447,7 +474,7 @@ void CLookUpTable::SetTDState_Ps(su2double P, su2double s) {
 	Get_Current_Points_From_TrapezoidalMap(Ps_map, P, s);
 
 //Determine interpolation coefficients
-	Interpolate_2D_Bilinear_Arbitrary_Skew_Coeff(s, P, ThermoTables_Entropy,
+	Interpolate_2D_Bilinear(s, P, ThermoTables_Entropy,
 			ThermoTables_Pressure, "PS");
 
 //Interpolate the fluid properties
@@ -472,7 +499,7 @@ void CLookUpTable::SetTDState_rhoT(su2double rho, su2double T) {
 
 	Get_Current_Points_From_TrapezoidalMap(rhoT_map, rho, T);
 //Determine the interpolation coefficients
-	Interpolate_2D_Bilinear_Arbitrary_Skew_Coeff(rho, T, ThermoTables_Density,
+	Interpolate_2D_Bilinear(rho, T, ThermoTables_Density,
 			ThermoTables_Temperature, "RHOT");
 
 //Interpolate the fluid properties
@@ -493,15 +520,83 @@ void CLookUpTable::SetTDState_rhoT(su2double rho, su2double T) {
 
 }
 
-void CLookUpTable::Interpolate_2D_Bilinear_Arbitrary_Skew_Coeff(su2double x,
-su2double y, vector< su2double > *ThermoTables_X,
-		vector< su2double > *ThermoTables_Y, std::string grid_var) {
+inline void CLookUpTable::Gaussian_Inverse(int nDim) {
+	//A temporary matrix to hold the inverse
+	vector < vector <su2double> > temp;
+	temp.resize(nDim, vector <su2double> (2*nDim, 0));
+
+	//Copy the desired matrix into the temporary matrix
+	for (int i = 0; i < nDim; i++) {
+		for (int j = 0; j < nDim; j++) {
+			temp[i][j] = Interpolation_Matrix[i][j];
+			temp[i][nDim + j] = 0;
+		}
+		temp[i][nDim + i] = 1;
+	}
+
+	su2double max_val;
+	int max_idx;
+	//Pivot each column such that the largest number possible divides the oter rows
+	//The goal is to avoid zeros or small numbers in division.
+	for (int k = 0; k < nDim - 1; k++) {
+		max_idx = k;
+		max_val = abs(temp[k][k]);
+		//Find the largest value (pivot) in the column
+		for (int j = k; j < nDim; j++) {
+			if (abs(temp[j][k]) > max_val) {
+				max_idx = j;
+				max_val = abs(temp[j][k]);
+			}
+		}
+		//Move the row with the highest value up
+		for (int j = 0; j < (nDim * 2); j++) {
+			su2double d = temp[k][j];
+			temp[k][j] = temp[max_idx][j];
+			temp[max_idx][j] = d;
+		}
+		//Subtract the moved row from all other rows
+		for (int i = k + 1; i < nDim; i++) {
+			su2double c = temp[i][k] / temp[k][k];
+			for (int j = 0; j < (nDim * 2); j++) {
+				temp[i][j] = temp[i][j] - temp[k][j] * c;
+			}
+		}
+	}
+
+	//Back-substitution
+	for (int k = nDim - 1; k > 0; k--) {
+		if (temp[k][k] != 0) {
+			for (int i = k - 1; i > -1; i--) {
+				su2double c = temp[i][k] / temp[k][k];
+				for (int j = 0; j < (nDim * 2); j++) {
+					temp[i][j] = temp[i][j] - temp[k][j] * c;
+				}
+			}
+		}
+	}
+	//Normalize the inverse
+	for (int i = 0; i < nDim; i++) {
+		su2double c = temp[i][i];
+		for (int j = 0; j < nDim; j++) {
+			temp[i][j + nDim] = temp[i][j + nDim] / c;
+		}
+	}
+	//Copy the inverse back to the main program flow
+	for (int i = 0; i < nDim; i++) {
+		for (int j = 0; j < nDim; j++) {
+			Interpolation_Coeff[i][j] = temp[i][j + nDim];
+		}
+	}
+	return;
+}
+
+void CLookUpTable::Interpolate_2D_Bilinear(su2double x, su2double y,
+		vector<su2double> *ThermoTables_X, vector<su2double> *ThermoTables_Y,
+		std::string grid_var) {
 	//The x,y coordinates of the quadrilateral
-	su2double x0, y0, x1, x2, y1, y2;
+	su2double x0, y0, x1, x2, y1, y2, x3, y3;
 	sort(CurrentPoints.begin(), CurrentPoints.end());
-	vector<int>::iterator iter = unique(CurrentPoints.begin(),
-			CurrentPoints.end());
-	CurrentPoints.resize(distance(CurrentPoints.begin(), iter));
+	unique(CurrentPoints.begin(), CurrentPoints.end());
 
 	x0 = ThermoTables_X[CurrentZone][CurrentPoints[0]];
 	y0 = ThermoTables_Y[CurrentZone][CurrentPoints[0]];
@@ -509,65 +604,91 @@ su2double y, vector< su2double > *ThermoTables_X,
 	y1 = ThermoTables_Y[CurrentZone][CurrentPoints[1]];
 	x2 = ThermoTables_X[CurrentZone][CurrentPoints[2]];
 	y2 = ThermoTables_Y[CurrentZone][CurrentPoints[2]];
+	x3 = ThermoTables_X[CurrentZone][CurrentPoints[3]];
+	y3 = ThermoTables_Y[CurrentZone][CurrentPoints[3]];
 
 	//Setup the LHM matrix for the interpolation (Vandermonde)
-	Interpolation_Matrix[0][0] = 1;
-	Interpolation_Matrix[0][1] = 0;
-	Interpolation_Matrix[0][2] = 0;
 
-	Interpolation_Matrix[1][0] = 1;
-	Interpolation_Matrix[1][1] = x1 - x0;
-	Interpolation_Matrix[1][2] = y1 - y0;
+//	Interpolation_Matrix[0][0] = 1;
+//	Interpolation_Matrix[0][1] = 0;
+//	Interpolation_Matrix[0][2] = 0;
+//	Interpolation_Matrix[0][3] = 0;
+//
+//	Interpolation_Matrix[1][0] = 1;
+//	Interpolation_Matrix[1][1] = (x1-x0);
+//	Interpolation_Matrix[1][2] = (y1-y0);
+//	Interpolation_Matrix[1][3] = (y1-y0) * (x1-x0);
+//
+//	Interpolation_Matrix[2][0] = 1;
+//	Interpolation_Matrix[2][1] = (x2-x0);
+//	Interpolation_Matrix[2][2] = (y2-y0);
+//	Interpolation_Matrix[2][3] = (y2-y0)* (x2-x0);
+//
+//	Interpolation_Matrix[3][0] = 1;
+//	Interpolation_Matrix[3][1] = (x3-x0);
+//	Interpolation_Matrix[3][2] = (y3-y0);
+//	Interpolation_Matrix[3][3] = (x3-x0) * (y3-y0);
+	  Interpolation_Matrix[0][0] = 1;
+		Interpolation_Matrix[0][1] = x0;
+		Interpolation_Matrix[0][2] = y0;
+		Interpolation_Matrix[0][3] = x0*y0;
 
-	Interpolation_Matrix[2][0] = 1;
-	Interpolation_Matrix[2][1] = x2 - x0;
-	Interpolation_Matrix[2][2] = y2 - y0;
+		Interpolation_Matrix[1][0] = 1;
+		Interpolation_Matrix[1][1] = (x1);
+		Interpolation_Matrix[1][2] = (y1);
+		Interpolation_Matrix[1][3] = (y1) * (x1);
 
-	//Invert the Interpolation matrix and take the transpose
-	Interpolation_Coeff[0][0] = 1;
-	Interpolation_Coeff[0][1] = (y1 - y2)
-			/ (x0 * y1 - x0 * y2 - x1 * y0 + x1 * y2 + x2 * y0 - x2 * y1);
-	Interpolation_Coeff[0][2] = (-x1 + x2)
-			/ (x0 * y1 - x0 * y2 - x1 * y0 + x1 * y2 + x2 * y0 - x2 * y1);
-	Interpolation_Coeff[1][0] = 0;
-	Interpolation_Coeff[1][1] = (-y0 + y2)
-			/ (x0 * y1 - x0 * y2 - x1 * y0 + x1 * y2 + x2 * y0 - x2 * y1);
-	Interpolation_Coeff[1][2] = (x0 - x2)
-			/ (x0 * y1 - x0 * y2 - x1 * y0 + x1 * y2 + x2 * y0 - x2 * y1);
-	Interpolation_Coeff[2][0] = 0;
-	Interpolation_Coeff[2][1] = (y0 - y1)
-			/ (x0 * y1 - x0 * y2 - x1 * y0 + x1 * y2 + x2 * y0 - x2 * y1);
-	Interpolation_Coeff[2][2] = (-x0 + x1)
-			/ (x0 * y1 - x0 * y2 - x1 * y0 + x1 * y2 + x2 * y0 - x2 * y1);
+		Interpolation_Matrix[2][0] = 1;
+		Interpolation_Matrix[2][1] = (x2);
+		Interpolation_Matrix[2][2] = (y2);
+		Interpolation_Matrix[2][3] = (y2)* (x2);
 
+		Interpolation_Matrix[3][0] = 1;
+		Interpolation_Matrix[3][1] = (x3);
+		Interpolation_Matrix[3][2] = (y3);
+		Interpolation_Matrix[3][3] = (x3) * (y3);
+
+	//Invert the Interpolation matrix using Gaussian elimination with pivoting
+	Gaussian_Inverse(4);
+	su2double d;
+
+	//Transpose the inverse
+	for (int i = 0; i < 3; i++) {
+		for (int j = i + 1; j < 4; j++) {
+			d = Interpolation_Coeff[i][j];
+			Interpolation_Coeff[i][j] = Interpolation_Coeff[j][i];
+			Interpolation_Coeff[j][i] = d;
+		}
+	}
 	//The transpose allows the same coefficients to be used
 	// for all Thermo variables (need only 4 coefficients)
-	su2double d;
-	for (int i = 0; i < 3; i++) {
+	for (int i = 0; i < 4; i++) {
 		d = 0;
 		d = d + Interpolation_Coeff[i][0] * 1;
-		d = d + Interpolation_Coeff[i][1] * (x - x0);
-		d = d + Interpolation_Coeff[i][2] * (y - y0);
+		d = d + Interpolation_Coeff[i][1] * (x);
+		d = d + Interpolation_Coeff[i][2] * (y);
+		d = d + Interpolation_Coeff[i][3] * (x) * (y);
 		Interpolation_Coeff[i][0] = d;
 	}
-	return;
 }
 
 su2double CLookUpTable::Interpolate_2D_Bilinear(
-		vector< su2double > *ThermoTables_Z) {
-//The function values at the 4 corners of the quad
-	su2double func_value_1, func_value_2, func_value_3;
+		vector<su2double> *ThermoTables_Z) {
+	//The function values at the 4 corners of the quad
+	su2double func_value_0, func_value_1, func_value_2, func_value_3;
 
-	func_value_1 = ThermoTables_Z[CurrentZone][CurrentPoints[0]];
-	func_value_2 = ThermoTables_Z[CurrentZone][CurrentPoints[1]];
-	func_value_3 = ThermoTables_Z[CurrentZone][CurrentPoints[2]];
+	func_value_0 = ThermoTables_Z[CurrentZone][CurrentPoints[0]];
+	func_value_1 = ThermoTables_Z[CurrentZone][CurrentPoints[1]];
+	func_value_2 = ThermoTables_Z[CurrentZone][CurrentPoints[2]];
+	func_value_3 = ThermoTables_Z[CurrentZone][CurrentPoints[3]];
 
-//The Interpolation_Coeff values depend on location alone
-//and are the same regardless of function values
+	//The Interpolation_Coeff values depend on location alone
+	//and are the same regardless of function values
 	su2double result = 0;
-	result = result + Interpolation_Coeff[0][0] * func_value_1;
-	result = result + Interpolation_Coeff[1][0] * func_value_2;
-	result = result + Interpolation_Coeff[2][0] * func_value_3;
+	result = result + Interpolation_Coeff[0][0] * func_value_0;
+	result = result + Interpolation_Coeff[1][0] * func_value_1;
+	result = result + Interpolation_Coeff[2][0] * func_value_2;
+	result = result + Interpolation_Coeff[3][0] * func_value_3;
 
 	return result;
 }
