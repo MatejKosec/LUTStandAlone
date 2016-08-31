@@ -17,7 +17,8 @@ using namespace std;
 class CTrapezoidalMap {
 protected:
 	int rank, UpperI, LowerI, middleI, LowerJ, UpperJ, middleJ;
-	int UpperEdge, MiddleEdge, LowerEdge;
+	int UpperEdge, LowerEdge;
+	vector<int> CurrentFace;
 	//The unique values of x which exist in the data
 	vector<su2double> Unique_X_Bands;
 	vector<vector<int> > Unique_Edges;
@@ -25,40 +26,19 @@ protected:
 	//The value that each edge which intersects the band takes within that
 	//same band. Used to sort the edges
 	vector<vector<pair<su2double, int> > > Y_Values_of_Edge_Within_Band_And_Index;
+	vector<vector<int> > Edge_To_Face_Connectivity;
 public:
 	CTrapezoidalMap();
 	CTrapezoidalMap(vector<su2double> const &x_samples,
 			vector<su2double> const &y_samples,
-			vector<vector<int> > const &unique_edges);
+			vector<vector<int> > const &unique_edges,
+			vector<vector<int> > const &edge_to_face_connectivity);
 	void Find_Containing_Simplex(su2double x, su2double y);
 	void Search_Bands_For(su2double x);
 	void Search_Band_For_Edge(su2double x, su2double y);
 
-	int getLowerI() const {
-		return LowerI;
-	}
-
-	int getLowerJ() const {
-		return LowerJ;
-	}
-
-	int getUpperI() const {
-		return UpperI;
-	}
-
-	int getUpperJ() const {
-		return UpperJ;
-	}
-
-	int getLowerEdge() const {
-		return LowerEdge;
-	}
-
-	int getUpperEdge() const {
-		return UpperEdge;
-	}
-	int getMiddleEdge() const {
-		return MiddleEdge;
+	int getCurrentFace() const {
+		return CurrentFace[0];
 	}
 };
 
@@ -73,6 +53,7 @@ class CLookUpTable {
 protected:
 	int rank;
 	int CurrentZone;
+	int CurrentFace;
 	vector<int> CurrentPoints;
 	bool LUT_Debug_Mode;/*!< \brief If true, master node prints errors of points outside LUT*/
 	su2double Pressure_Reference_Value;su2double Density_Reference_Value;su2double Temperature_Reference_Value;su2double Velocity_Reference_Value;su2double Energy_Reference_Value;
@@ -150,10 +131,9 @@ public:
 	 */
 	void Get_Unique_Edges();
 
+	void Get_Bounding_Simplex_From_TrapezoidalMap(CTrapezoidalMap *t_map,
+	su2double x, su2double y);
 
-
-	void Get_Current_Points_From_TrapezoidalMap(CTrapezoidalMap *t_map,
-			su2double x, su2double y);
 
 	void SetTDState_rhoe(su2double rho, su2double e);
 
