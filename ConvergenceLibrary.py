@@ -163,9 +163,11 @@ class SciPy_InterpolatedData(ThermoData):
         setattr(self,thermo1, samples_x)
         setattr(self,thermo2, samples_y)
         
+        #variables = sp.array(['Temperature','Density','Enthalpy','StaticEnergy',\
+        #'Entropy','Pressure','SoundSpeed2','dPdrho_e','dPde_rho',\
+        #'dTdrho_e','dTde_rho','Cp'])#,'Mu','Kt']);
         variables = sp.array(['Temperature','Density','Enthalpy','StaticEnergy',\
-        'Entropy','Pressure','SoundSpeed2','dPdrho_e','dPde_rho',\
-        'dTdrho_e','dTde_rho','Cp'])#,'Mu','Kt']);
+        'Entropy','Pressure','SoundSpeed2','dPdrho_e','dPde_rho','Cp'])#,'Mu','Kt']);
         
         for var in variables[sp.where((variables!=thermo1) * (variables!=thermo2))]:
             z = getattr(LUT,var)            
@@ -237,9 +239,14 @@ class PRGridSkewed(ThermoData):
 class RefinementLevel(object):
    cases=False;
    filename=False;
+   #variables=sp.array(['Temperature','Density','Enthalpy','StaticEnergy',\
+    #    'Entropy','Pressure','SoundSpeed2','dPdrho_e','dPde_rho',\
+     #   'dTdrho_e','dTde_rho','Cp','Mu','Kt']);
+   #variables=sp.array(['Temperature','Density','Enthalpy','StaticEnergy',\
+    #   'Entropy','Pressure','SoundSpeed2','dPdrho_e','dPde_rho','Cp','Mu']);
    variables=sp.array(['Temperature','Density','Enthalpy','StaticEnergy',\
-        'Entropy','Pressure','SoundSpeed2','dPdrho_e','dPde_rho',\
-        'dTdrho_e','dTde_rho','Cp','Mu','Kt']);
+       'Entropy','Pressure','SoundSpeed2','dPdrho_e','dPde_rho','Cp']);
+       
    select = {\
         "rhoe":('Density','StaticEnergy'),\
         "PT":('Pressure','Temperature'),\

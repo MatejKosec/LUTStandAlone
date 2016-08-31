@@ -58,10 +58,9 @@ public:
 		return UpperEdge;
 	}
 	int getMiddleEdge() const {
-			return MiddleEdge;
-		}
+		return MiddleEdge;
+	}
 };
-
 
 /*!
  * \class CLookUpTable
@@ -74,16 +73,13 @@ class CLookUpTable {
 protected:
 	int rank;
 	int CurrentZone;
-	vector< int > CurrentPoints;
+	vector<int> CurrentPoints;
 	bool LUT_Debug_Mode;/*!< \brief If true, master node prints errors of points outside LUT*/
-	su2double Pressure_Reference_Value;
-	su2double Density_Reference_Value;
-	su2double Temperature_Reference_Value;
-	su2double Velocity_Reference_Value;
-	su2double Energy_Reference_Value;
+	su2double Pressure_Reference_Value;su2double Density_Reference_Value;su2double Temperature_Reference_Value;su2double Velocity_Reference_Value;su2double Energy_Reference_Value;
 
 	//Put the trapezoidal maps into variables
-	CTrapezoidalMap rhoe_map[2],Prho_map[2],hs_map[2],Ps_map[2],rhoT_map[2], PT_map[2];
+	CTrapezoidalMap rhoe_map[2], Prho_map[2], hs_map[2], Ps_map[2], rhoT_map[2],
+			PT_map[2];
 
 	su2double StaticEnergy, /*!< \brief Internal Energy. */
 	Entropy, /*!< \brief Entropy. */
@@ -124,18 +120,18 @@ protected:
 	ThermoTables_dktdT_rho[2]; /*!< \brief Fluid derivative DktDT_rho look up table values. */
 
 	su2double Interpolation_Matrix[4][4]; /*!< \brief The (Vandermonde) matrix for the interpolation (bilinear) */
+
 	su2double Interpolation_Coeff[4][4]; /*!< \brief Used to hold inverse of Interpolation_Matrix, and solution vector */
 	int LowerI, UpperI, middleI, LowerJ, UpperJ, middleJ;/*!< \brief The i,j indexes (rho, P) of the position of the table search. Can be used as a restart for next search.*/
 	int nTable_Zone_Stations[2]; /*!< \brief Number of nodes in the '2' zones of the LuT*/
 	int nTable_Zone_Triangles[2]; /*!< \brief Number of triangles in the '2' zones of the LuT (must be triangles for now)*/
-	vector< vector <int> > Table_Zone_Triangles[2];  /*!< \brief The triangles in each zone are stored as three intgers (the tree defining data-points)*/
-	vector< vector <int> > Table_Zone_Edges[2]; /*!< \brief Number of edges in the '2' zones of the LuT*/
-
+	vector<vector<int> > Table_Zone_Triangles[2]; /*!< \brief The triangles in each zone are stored as three intgers (the tree defining data-points)*/
+	vector<vector<int> > Table_Zone_Edges[2]; /*!< \brief The edges in the '2' zones of the LuT*/
+	vector<vector<int> > Table_Edge_To_Face_Connectivity[2];/*!< \brief Number of edges in the '2' zones of the LuT*/
 
 public:
 
-
-
+	CLookUpTable(void);
 	/*!
 	 * \brief Constructor the LUT by reading it in from a file.
 	 * \param[in] Filename - The name of the (.rgp) file from which to load the table
@@ -154,7 +150,10 @@ public:
 	 */
 	void Get_Unique_Edges();
 
-	void Get_Current_Points_From_TrapezoidalMap(CTrapezoidalMap *t_map, su2double x, su2double y);
+
+
+	void Get_Current_Points_From_TrapezoidalMap(CTrapezoidalMap *t_map,
+			su2double x, su2double y);
 
 	void SetTDState_rhoe(su2double rho, su2double e);
 
@@ -211,9 +210,9 @@ public:
 
 	void Gaussian_Inverse(int nDim);
 
-
-	void Interpolate_2D_Bilinear(su2double x, su2double y, vector< su2double > *ThermoTables_X, vector< su2double > *ThermoTables_Y, std::string grid_var);
-
+	void Interpolate_2D_Bilinear(su2double x, su2double y,
+			vector< su2double > *ThermoTables_X, vector< su2double > *ThermoTables_Y,
+			std::string grid_var);
 
 	/*!
 	 * \brief Use the interpolation coefficients to interpolate a given thermodynamic variable property. (Must calculate the interpolation coefficients first)
