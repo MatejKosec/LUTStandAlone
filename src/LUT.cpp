@@ -338,16 +338,16 @@ void CLookUpTable::Get_Unique_Edges() {
 			Table_Zone_Edges[j][3 * i + 2][2] = i;
 		}
 		//Sort the edges to enable selecting unique entries only
-		sort(Table_Zone_Edges[j].begin(), Table_Zone_Edges[j].end());
+		stable_sort(Table_Zone_Edges[j].begin(), Table_Zone_Edges[j].end());
 		//Make the list of edges unique and set connectivities at the same time
 		int k_final = 0;
 		int k_temp = 0;
 		while (k_temp < Table_Zone_Edges[j].size() - 1) {
-			Table_Edge_To_Face_Connectivity[j].push_back(vector<int>(1, 0));
+			Table_Edge_To_Face_Connectivity[j].push_back(vector<int>(1, -1));
 			Table_Edge_To_Face_Connectivity[j][k_final][0] =
 					Table_Zone_Edges[j][k_temp][2];
-			if ((Table_Zone_Edges[j][k_temp][0] = Table_Zone_Edges[j][k_temp + 1][0])
-					and (Table_Zone_Edges[j][k_temp][1] =
+			if ((Table_Zone_Edges[j][k_temp][0] == Table_Zone_Edges[j][k_temp + 1][0])
+					and (Table_Zone_Edges[j][k_temp][1] ==
 							Table_Zone_Edges[j][k_temp + 1][1])) {
 				Table_Edge_To_Face_Connectivity[j][k_final].push_back(
 						Table_Zone_Edges[j][k_temp + 1][2]);
