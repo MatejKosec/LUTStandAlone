@@ -166,8 +166,8 @@ class SciPy_InterpolatedData(ThermoData):
         #variables = sp.array(['Temperature','Density','Enthalpy','StaticEnergy',\
         #'Entropy','Pressure','SoundSpeed2','dPdrho_e','dPde_rho',\
         #'dTdrho_e','dTde_rho','Cp'])#,'Mu','Kt']);
-        variables = sp.array(['Temperature','Density','Enthalpy','StaticEnergy',\
-        'Entropy','Pressure','SoundSpeed2','dPdrho_e','dPde_rho','Cp'])#,'Mu','Kt']);
+        #variables = sp.array(['Temperature','Density','Enthalpy','StaticEnergy',\
+        #'Entropy','Pressure','SoundSpeed2','dPdrho_e','dPde_rho','Cp'])#,'Mu','Kt']);
         
         for var in variables[sp.where((variables!=thermo1) * (variables!=thermo2))]:
             z = getattr(LUT,var)            

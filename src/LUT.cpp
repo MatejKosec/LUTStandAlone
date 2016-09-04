@@ -13,6 +13,7 @@
 #include <iomanip>
 #include <vector>
 using namespace std;
+#define MASTER_NODE 12357
 
 CTrapezoidalMap::CTrapezoidalMap() {
 }
@@ -20,14 +21,14 @@ CTrapezoidalMap::CTrapezoidalMap(vector< su2double > const &x_samples,
 		vector< su2double > const &y_samples,
 		vector<vector<int> > const &unique_edges,
 		vector<vector<int> > const &edge_to_face_connectivity) {
-	rank = 12201;
+	rank = MASTER_NODE;
 
 #ifdef HAVE_MPI
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 #endif
 
 	clock_t build_start = clock();
-	CurrentFace.resize(1,0);
+	CurrentFace.resize(1, 0);
 	Edge_To_Face_Connectivity = edge_to_face_connectivity;
 	Unique_X_Bands = x_samples; //copy the x_values in
 	//Sort the x_bands and make them unique
@@ -106,7 +107,7 @@ CTrapezoidalMap::CTrapezoidalMap(vector< su2double > const &x_samples,
 
 	su2double duration = ((su2double) clock() - (su2double) build_start)
 			/ ((su2double) CLOCKS_PER_SEC);
-	if (rank == 12201)
+	if (rank == MASTER_NODE)
 		cout << duration << " seconds\n";
 }
 
@@ -120,13 +121,14 @@ void CTrapezoidalMap::Find_Containing_Simplex(su2double x, su2double y) {
 	vector<int> upper_edge_belongs_to_faces;
 	vector<int> lower_edge_belongs_to_faces;
 	upper_edge_belongs_to_faces = Edge_To_Face_Connectivity[UpperEdge];
-	sort(upper_edge_belongs_to_faces.begin(),upper_edge_belongs_to_faces.end());
+	sort(upper_edge_belongs_to_faces.begin(), upper_edge_belongs_to_faces.end());
 	lower_edge_belongs_to_faces = Edge_To_Face_Connectivity[LowerEdge];
-	sort(lower_edge_belongs_to_faces.begin(),lower_edge_belongs_to_faces.end());
+	sort(lower_edge_belongs_to_faces.begin(), lower_edge_belongs_to_faces.end());
 	//The intersection of the faces to which upper or lower belongs is
 	//the face that both belong to.
-	set_intersection(upper_edge_belongs_to_faces.begin(),upper_edge_belongs_to_faces.end(),
-			lower_edge_belongs_to_faces.begin(), lower_edge_belongs_to_faces.end(),CurrentFace.begin());
+	set_intersection(upper_edge_belongs_to_faces.begin(),
+			upper_edge_belongs_to_faces.end(), lower_edge_belongs_to_faces.begin(),
+			lower_edge_belongs_to_faces.end(), CurrentFace.begin());
 }
 
 void CTrapezoidalMap::Search_Bands_For(su2double x) {
@@ -138,11 +140,12 @@ void CTrapezoidalMap::Search_Bands_For(su2double x) {
 		x_lower = Unique_X_Bands[LowerI];
 		x_upper = Unique_X_Bands[UpperI];
 		//Step used for restarting the search on the low end
-		if (x < x_lower) {
+		//Step used for restarting the search on the low end
+		if (x < x_lower and (LowerI > 0)) {
 			UpperI = LowerI;
 			LowerI = LowerI / 2;
 			//Step used for restarting the search on the upper end
-		} else if (x > x_upper) {
+		} else if (x > x_upper and (UpperI < (Unique_X_Bands.size() - 1))) {
 			LowerI = UpperI;
 			UpperI = (UpperI + (Unique_X_Bands.size() - 1)) / 2;
 			//After the restart is cleared, do the normal binary search
@@ -194,7 +197,7 @@ void CTrapezoidalMap::Search_Band_For_Edge(su2double x, su2double y) {
 
 CLookUpTable::CLookUpTable(string Filename) {
 	LUT_Debug_Mode = false;
-	rank = 12201;
+	rank = MASTER_NODE;
 	CurrentPoints.resize(4, 0);
 	CurrentZone = 1;		//The vapor region
 
@@ -210,12 +213,12 @@ CLookUpTable::CLookUpTable(string Filename) {
 
 	//Detect LuT filetype
 	if ((Filename).find(".tec") != string::npos) {
-		if (rank == 12201) {
+		if (rank == MASTER_NODE) {
 			cout << ".tec type LUT found" << endl;
 		}
 		LookUpTable_Load_TEC(Filename);
 	} else {
-		if (rank == 12201) {
+		if (rank == MASTER_NODE) {
 			cout << "No recognized LUT format found, exiting!" << endl;
 		}
 		exit(EXIT_FAILURE);
@@ -226,7 +229,7 @@ CLookUpTable::CLookUpTable(string Filename) {
 			Interpolation_Coeff[i][j] = -1.0;
 		}
 	}
-	if (rank == 12201) {
+	if (rank == MASTER_NODE) {
 		// Give the user some information on the size of the table
 		cout << "Number of stations  in zone 0: " << nTable_Zone_Stations[0]
 				<< endl;
@@ -241,14 +244,14 @@ CLookUpTable::CLookUpTable(string Filename) {
 				<< endl;
 	}
 	Get_Unique_Edges();
-	if (rank == 12201) {
+	if (rank == MASTER_NODE) {
 		cout << "Number of edges in zone 0: " << Table_Zone_Edges[0].size() << endl;
 		cout << "Number of edges in zone 1: " << Table_Zone_Edges[1].size() << endl;
 
 	}
 //	Get_Edge_To_Face_Connectivty();
 
-	if (rank == 12201) {
+	if (rank == MASTER_NODE) {
 		// Building an KD_tree for the HS thermopair
 		cout << "Building trapezoidal map for rhoe..." << endl;
 	}
@@ -260,7 +263,7 @@ CLookUpTable::CLookUpTable(string Filename) {
 			ThermoTables_StaticEnergy[1], Table_Zone_Edges[1],
 			Table_Edge_To_Face_Connectivity[1]);
 
-	if (rank == 12201) {
+	if (rank == MASTER_NODE) {
 		cout << "Building trapezoidal map for Prho..." << endl;
 	}
 	Prho_map[0] = CTrapezoidalMap(ThermoTables_Pressure[0],
@@ -270,7 +273,7 @@ CLookUpTable::CLookUpTable(string Filename) {
 			ThermoTables_Density[1], Table_Zone_Edges[1],
 			Table_Edge_To_Face_Connectivity[1]);
 
-	if (rank == 12201) {
+	if (rank == MASTER_NODE) {
 		cout << "Building trapezoidal map for hs..." << endl;
 	}
 	hs_map[0] = CTrapezoidalMap(ThermoTables_Enthalpy[0], ThermoTables_Entropy[0],
@@ -278,7 +281,7 @@ CLookUpTable::CLookUpTable(string Filename) {
 	hs_map[1] = CTrapezoidalMap(ThermoTables_Enthalpy[1], ThermoTables_Entropy[1],
 			Table_Zone_Edges[1], Table_Edge_To_Face_Connectivity[1]);
 
-	if (rank == 12201) {
+	if (rank == MASTER_NODE) {
 		cout << "Building trapezoidal map for Ps..." << endl;
 	}
 	Ps_map[0] = CTrapezoidalMap(ThermoTables_Pressure[0], ThermoTables_Entropy[0],
@@ -286,7 +289,7 @@ CLookUpTable::CLookUpTable(string Filename) {
 	Ps_map[1] = CTrapezoidalMap(ThermoTables_Pressure[1], ThermoTables_Entropy[1],
 			Table_Zone_Edges[1], Table_Edge_To_Face_Connectivity[1]);
 
-	if (rank == 12201) {
+	if (rank == MASTER_NODE) {
 		cout << "Building trapezoidal map for rhoT..." << endl;
 	}
 	rhoT_map[0] = CTrapezoidalMap(ThermoTables_Density[0],
@@ -298,7 +301,7 @@ CLookUpTable::CLookUpTable(string Filename) {
 			Table_Edge_To_Face_Connectivity[1]);
 	;
 
-	if (rank == 12201) {
+	if (rank == MASTER_NODE) {
 		cout << "Building trapezoidal map for PT (in vapor region only)..." << endl;
 	}
 	PT_map[1] = CTrapezoidalMap(ThermoTables_Pressure[1],
@@ -347,8 +350,8 @@ void CLookUpTable::Get_Unique_Edges() {
 			Table_Edge_To_Face_Connectivity[j][k_final][0] =
 					Table_Zone_Edges[j][k_temp][2];
 			if ((Table_Zone_Edges[j][k_temp][0] == Table_Zone_Edges[j][k_temp + 1][0])
-					and (Table_Zone_Edges[j][k_temp][1] ==
-							Table_Zone_Edges[j][k_temp + 1][1])) {
+					and (Table_Zone_Edges[j][k_temp][1]
+							== Table_Zone_Edges[j][k_temp + 1][1])) {
 				Table_Edge_To_Face_Connectivity[j][k_final].push_back(
 						Table_Zone_Edges[j][k_temp + 1][2]);
 				k_temp++;
@@ -381,7 +384,6 @@ void CLookUpTable::Get_Bounding_Simplex_From_TrapezoidalMap(
 	t_map[CurrentZone].Find_Containing_Simplex(x, y);
 	CurrentFace = t_map[CurrentZone].getCurrentFace();
 	CurrentPoints = Table_Zone_Triangles[CurrentZone][CurrentFace];
-	//CurrentPoints.push_back(CurrentPoints[0]);
 
 }
 
@@ -389,7 +391,6 @@ void CLookUpTable::SetTDState_rhoe(su2double rho, su2double e) {
 // Check if inputs are in total range (necessary but not sufficient condition)
 
 	Get_Bounding_Simplex_From_TrapezoidalMap(rhoe_map, rho, e);
-
 
 	//Now use the quadrilateral which contains the point to interpolate
 	//Determine the interpolation coefficients
@@ -630,8 +631,6 @@ void CLookUpTable::Interpolate_2D_Bilinear(su2double x, su2double y,
 		std::string grid_var) {
 	//The x,y coordinates of the quadrilateral
 	su2double x0, y0, x1, x2, y1, y2, x3, y3;
-	sort(CurrentPoints.begin(), CurrentPoints.end());
-	unique(CurrentPoints.begin(), CurrentPoints.end());
 
 	x0 = ThermoTables_X[CurrentZone][CurrentPoints[0]];
 	y0 = ThermoTables_Y[CurrentZone][CurrentPoints[0]];
@@ -639,57 +638,25 @@ void CLookUpTable::Interpolate_2D_Bilinear(su2double x, su2double y,
 	y1 = ThermoTables_Y[CurrentZone][CurrentPoints[1]];
 	x2 = ThermoTables_X[CurrentZone][CurrentPoints[2]];
 	y2 = ThermoTables_Y[CurrentZone][CurrentPoints[2]];
-	//x3 = ThermoTables_X[CurrentZone][CurrentPoints[3]];
-	//y3 = ThermoTables_Y[CurrentZone][CurrentPoints[3]];
-
-	//cout<<CurrentPoints[0]<<" "<<CurrentPoints[1]<<" "<<CurrentPoints[2]<<" "<<CurrentPoints[3]<<endl;
-	//cout<<x0<<" "<<x1<<" "<<x2<<" "<<x3<<endl;
-	//cout<<y0<<" "<<y1<<" "<<y2<<" "<<y3<<endl;
 
 	//Setup the LHM matrix for the interpolation (Vandermonde)
 
-	Interpolation_Matrix[0][0] = 1;
+	Interpolation_Matrix[0][0] = x0 * y0;
 	Interpolation_Matrix[0][1] = 0;
 	Interpolation_Matrix[0][2] = 0;
-	//Interpolation_Matrix[0][3] = 0;
 
-	Interpolation_Matrix[1][0] = 1;
+	Interpolation_Matrix[1][0] = x1 * y1;
 	Interpolation_Matrix[1][1] = (x1 - x0);
 	Interpolation_Matrix[1][2] = (y1 - y0);
-	//Interpolation_Matrix[1][3] = (y1 - y0) * (x1 - x0);
 
-	Interpolation_Matrix[2][0] = 1;
+	Interpolation_Matrix[2][0] = x2 * y2;
 	Interpolation_Matrix[2][1] = (x2 - x0);
 	Interpolation_Matrix[2][2] = (y2 - y0);
-	//Interpolation_Matrix[2][3] = (y2 - y0) * (x2 - x0);
-
-	//Interpolation_Matrix[3][0] = 1;
-	//Interpolation_Matrix[3][1] = (x3 - x0);
-	//Interpolation_Matrix[3][2] = (y3 - y0);
-	//Interpolation_Matrix[3][3] = (x3 - x0) * (y3 - y0);
-//	  Interpolation_Matrix[0][0] = 1;
-//		Interpolation_Matrix[0][1] = x0;
-//		Interpolation_Matrix[0][2] = y0;
-//		Interpolation_Matrix[0][3] = x0*y0;
-//
-//		Interpolation_Matrix[1][0] = 1;
-//		Interpolation_Matrix[1][1] = (x1);
-//		Interpolation_Matrix[1][2] = (y1);
-//		Interpolation_Matrix[1][3] = (y1) * (x1);
-//
-//		Interpolation_Matrix[2][0] = 1;
-//		Interpolation_Matrix[2][1] = (x2);
-//		Interpolation_Matrix[2][2] = (y2);
-//		Interpolation_Matrix[2][3] = (y2)* (x2);
-//
-//		Interpolation_Matrix[3][0] = 1;
-//		Interpolation_Matrix[3][1] = (x3);
-//		Interpolation_Matrix[3][2] = (y3);
-//		Interpolation_Matrix[3][3] = (x3) * (y3);
 
 	//Invert the Interpolation matrix using Gaussian elimination with pivoting
 	Gaussian_Inverse(3);
 	su2double d;
+
 
 	//Transpose the inverse
 	for (int i = 0; i < 2; i++) {
@@ -703,7 +670,7 @@ void CLookUpTable::Interpolate_2D_Bilinear(su2double x, su2double y,
 	// for all Thermo variables (need only 4 coefficients)
 	for (int i = 0; i < 3; i++) {
 		d = 0;
-		d = d + Interpolation_Coeff[i][0] * 1;
+		d = d + Interpolation_Coeff[i][0] * x * y;
 		d = d + Interpolation_Coeff[i][1] * (x - x0);
 		d = d + Interpolation_Coeff[i][2] * (y - y0);
 		//d = d + Interpolation_Coeff[i][3] * (x - x0) * (y - y0);
@@ -714,12 +681,11 @@ void CLookUpTable::Interpolate_2D_Bilinear(su2double x, su2double y,
 su2double CLookUpTable::Interpolate_2D_Bilinear(
 		vector<su2double> *ThermoTables_Z) {
 	//The function values at the 4 corners of the quad
-	su2double func_value_0, func_value_1, func_value_2, func_value_3;
+	su2double func_value_0, func_value_1, func_value_2;
 
 	func_value_0 = ThermoTables_Z[CurrentZone][CurrentPoints[0]];
 	func_value_1 = ThermoTables_Z[CurrentZone][CurrentPoints[1]];
 	func_value_2 = ThermoTables_Z[CurrentZone][CurrentPoints[2]];
-	//func_value_3 = ThermoTables_Z[CurrentZone][CurrentPoints[3]];
 
 	//The Interpolation_Coeff values depend on location alone
 	//and are the same regardless of function values
@@ -727,7 +693,6 @@ su2double CLookUpTable::Interpolate_2D_Bilinear(
 	result = result + Interpolation_Coeff[0][0] * func_value_0;
 	result = result + Interpolation_Coeff[1][0] * func_value_1;
 	result = result + Interpolation_Coeff[2][0] * func_value_2;
-	//result = result + Interpolation_Coeff[3][0] * func_value_3;
 
 	return result;
 }
@@ -795,7 +760,7 @@ void CLookUpTable::LookUpTable_Load_TEC(std::string filename) {
 
 	ifstream table(filename.c_str());
 	if (!table.is_open()) {
-		if (rank == 12201) {
+		if (rank == MASTER_NODE) {
 			cout << "The LUT file appears to be missing!! " << filename << endl;
 		}
 		exit(EXIT_FAILURE);
