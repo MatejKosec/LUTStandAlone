@@ -36,17 +36,19 @@ CTrapezoidalMap::CTrapezoidalMap(vector<su2double> const &x_samples,
 	vector<su2double>::iterator iter;
 	iter = unique(Unique_X_Bands.begin(), Unique_X_Bands.end());
 	Unique_X_Bands.resize(distance(Unique_X_Bands.begin(), iter));
-	X_Limits_of_Edges.resize(unique_edges.size(), vector<su2double>(2, 0));
+	X_Limits_of_Edges.resize(unique_edges.size(), make_pair(vector<su2double>(2, 0),0));
 	Y_Limits_of_Edges.resize(unique_edges.size(), vector<su2double>(2, 0));
 
 	//Store the x and y values of each edge into a vector for a slight speed up as it
 	//prevents some uncoalesced accesses
 	for (unsigned int j = 0; j < unique_edges.size(); j++) {
-		X_Limits_of_Edges[j][0] = x_samples[unique_edges[j][0]];
-		X_Limits_of_Edges[j][1] = x_samples[unique_edges[j][1]];
+		X_Limits_of_Edges[j].first[0] = x_samples[unique_edges[j][0]];
+		X_Limits_of_Edges[j].first[1] = x_samples[unique_edges[j][1]];
+		X_Limits_of_Edges[j].second = j;
 		Y_Limits_of_Edges[j][0] = y_samples[unique_edges[j][0]];
 		Y_Limits_of_Edges[j][1] = y_samples[unique_edges[j][1]];
 	}
+	sort(X_Limits_of_Edges.begin(),X_Limits_of_Edges.end());
 
 	//How many bands to search?
 	int b_max = Unique_X_Bands.size() - 1;
@@ -73,27 +75,45 @@ CTrapezoidalMap::CTrapezoidalMap(vector<su2double> const &x_samples,
 		k = 0;
 		//This while loop determined which edges appear in a paritcular band
 		//The index of the edge being tested is 'i'
-		while (i < e_max) {
+		while ((X_Limits_of_Edges[i].first[0] <= x_low)) {
 			//Check if edge intersects the band (vertical edges are automatically discared)
-			if (((X_Limits_of_Edges[i][0] <= x_low)
-					and (X_Limits_of_Edges[i][1] >= x_hi))
-					or ((X_Limits_of_Edges[i][1] <= x_low)
-							and (X_Limits_of_Edges[i][0] >= x_hi))) {
+			if (X_Limits_of_Edges[i].first[1] >= x_hi) {
+				int actual_edge_ind = X_Limits_of_Edges[i].second;
 				Y_Values_of_Edge_Within_Band_And_Index[b].push_back(make_pair(0.0, 0));
 				//Save the edge index so it can latter be recalled (when searching)
-				Y_Values_of_Edge_Within_Band_And_Index[b][k].second = i;
+				Y_Values_of_Edge_Within_Band_And_Index[b][k].second = actual_edge_ind;
 				//Determine what y value the edge takes in the middle of the band
 				Y_Values_of_Edge_Within_Band_And_Index[b][k].first =
-						Y_Limits_of_Edges[i][0]
-								+ (Y_Limits_of_Edges[i][1] - Y_Limits_of_Edges[i][0])
-										/ (X_Limits_of_Edges[i][1] - X_Limits_of_Edges[i][0])
-										* ((x_low + x_hi) / 2.0 - X_Limits_of_Edges[i][0]);
+						Y_Limits_of_Edges[actual_edge_ind][0]
+								+ (Y_Limits_of_Edges[actual_edge_ind][1] - Y_Limits_of_Edges[actual_edge_ind][0])
+										/ (X_Limits_of_Edges[i].first[1] - X_Limits_of_Edges[i].first[0])
+										* ((x_low + x_hi) / 2.0 - X_Limits_of_Edges[i].first[0]);
 				//k counts the number of edges which have been found to intersect with the band
 				k++;
 			}
 			//increment i, which  moves the algorithm along to the next edge
 			i++;
 		}
+		i = e_max;
+		while (X_Limits_of_Edges[i].first[0] >= x_hi) {
+			if ((X_Limits_of_Edges[i].first[1] <= x_low)) {
+				int actual_edge_ind = X_Limits_of_Edges[i].second;
+				Y_Values_of_Edge_Within_Band_And_Index[b].push_back(make_pair(0.0, 0));
+				//Save the edge index so it can latter be recalled (when searching)
+				Y_Values_of_Edge_Within_Band_And_Index[b][k].second = actual_edge_ind;
+				//Determine what y value the edge takes in the middle of the band
+				Y_Values_of_Edge_Within_Band_And_Index[b][k].first =
+						Y_Limits_of_Edges[actual_edge_ind][0]
+								+ (Y_Limits_of_Edges[actual_edge_ind][1] - Y_Limits_of_Edges[actual_edge_ind][0])
+										/ (X_Limits_of_Edges[i].first[1] - X_Limits_of_Edges[i].first[0])
+										* ((x_low + x_hi) / 2.0 - X_Limits_of_Edges[i].first[0]);
+				//k counts the number of edges which have been found to intersect with the band
+				k++;
+			}
+			//decrement i, which  moves the algorithm along to the next edge
+			i--;
+		}
+
 		//Sort the edges in the band depending on the y values they were found to have
 		//It is worth noting that these y values are unique (i.e. edges cannot intersect in a band)
 		sort(Y_Values_of_Edge_Within_Band_And_Index[b].begin(),
@@ -198,7 +218,7 @@ CLookUpTable::CLookUpTable(string Filename) {
 	LUT_Debug_Mode = false;
 	rank = MASTER_NODE;
 	CurrentZone = 1;
-	nInterpPoints = 8;
+	nInterpPoints = 4;
 	CurrentPoints.resize(nInterpPoints, 0);
 	LUT_Debug_Mode = false;
 	Interpolation_Matrix.resize(nInterpPoints,
@@ -457,7 +477,6 @@ void CLookUpTable::Compute_Interpolation_Coefficients() {
 		//Set the found points as the current points
 		CurrentPoints = result_IDs;
 		Interpolation_Points[CurrentZone][i] = result_IDs;
-
 		//Now use the nearest 16 points to construct an interpolation function
 		//for each search pair option
 		Rhoe_Interpolation_Matrix_Inverse[CurrentZone][i] =
@@ -487,7 +506,6 @@ void CLookUpTable::Get_Bounding_Simplex_From_TrapezoidalMap(
 	t_map[CurrentZone].Find_Containing_Simplex(x, y);
 	CurrentFace = t_map[CurrentZone].getCurrentFace();
 	CurrentPoints = Interpolation_Points[CurrentZone][CurrentFace];
-
 }
 
 void CLookUpTable::SetTDState_rhoe(su2double rho, su2double e) {
@@ -724,13 +742,13 @@ inline void CLookUpTable::Gaussian_Inverse(int nDim) {
 }
 
 vector<su2double> CLookUpTable::Evaluate_Interpolation_Vector(su2double x,
-		su2double y) {
+su2double y) {
 	vector<su2double> interpolation_vector;
 	interpolation_vector.resize(nInterpPoints, 0);
 	interpolation_vector[0] = 1;
 	interpolation_vector[1] = x;
 	interpolation_vector[2] = y;
-	interpolation_vector[3] = x * y ;
+	interpolation_vector[3] = x * y;
 //	interpolation_vector[4] = x * y * y;
 //	interpolation_vector[5] = x * y * y * y;
 //	interpolation_vector[6] = x * x;
@@ -743,19 +761,6 @@ vector<su2double> CLookUpTable::Evaluate_Interpolation_Vector(su2double x,
 //	interpolation_vector[13] = x * x * x * y * y;
 //	interpolation_vector[14] = x * x * x * y * y * y;
 //	interpolation_vector[15] = y * y * y;
-
-	interpolation_vector[4] = x*x;
-	interpolation_vector[5] = y*y;
-  interpolation_vector[6] = log(y) ;
-	interpolation_vector[7] = log(x);
-//	interpolation_vector[8] = log(y);
-//	interpolation_vector[9] = log(x + y);
-//	interpolation_vector[10] = exp(x);
-//	interpolation_vector[11] = exp(y);
-//	interpolation_vector[12] = exp(x * y);
-//	interpolation_vector[13] = exp(-x);
-//	interpolation_vector[14] = exp(-y);
-//	interpolation_vector[15] = exp(x * y);
 
 	return interpolation_vector;
 }
@@ -786,7 +791,7 @@ vector<vector<double> > CLookUpTable::Interpolation_Matrix_Prepare_And_Invert(
 }
 
 void CLookUpTable::Calculate_Query_Specific_Coefficients(su2double x,
-		su2double y) {
+su2double y) {
 	vector<su2double> query_vector = Evaluate_Interpolation_Vector(x, y);
 	Query_Specific_Interpolation_Coefficients.resize(nInterpPoints, 0);
 	su2double d;

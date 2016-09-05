@@ -24,7 +24,8 @@ protected:
 	//The unique values of x which exist in the data
 	vector<su2double> Unique_X_Bands;
 	vector<vector<int> > Unique_Edges;
-	vector<vector<su2double> > X_Limits_of_Edges, Y_Limits_of_Edges;
+	vector<pair<vector<su2double>,int> > X_Limits_of_Edges;
+	vector<vector<su2double> > Y_Limits_of_Edges;
 	//The value that each edge which intersects the band takes within that
 	//same band. Used to sort the edges
 	vector<vector<pair<su2double, int> > > Y_Values_of_Edge_Within_Band_And_Index;
