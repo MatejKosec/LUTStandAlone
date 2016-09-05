@@ -4,6 +4,8 @@
 
 using namespace std;
 
+#include "./adt_structure.hpp"
+
 /*!
  * \class CTrapezoidalMap
  * \brief An algorithm for finding the polygon
@@ -45,7 +47,7 @@ public:
 /*!
  * \class CLookUpTable
  * \brief Class for defining a lookuptable fluid model
- * \author: A. Rubino, S.Vitale., M. Kosec
+ * \author: M. Kosec, A. Rubino, S.Vitale.
  * \version 4.1.2 "Cardinal"
  */
 class CLookUpTable {
@@ -54,9 +56,14 @@ protected:
 	int rank;
 	int CurrentZone;
 	int CurrentFace;
-	vector<int> CurrentPoints;
+	int nInterpPoints;
+	vector<unsigned long> CurrentPoints;
 	bool LUT_Debug_Mode;/*!< \brief If true, master node prints errors of points outside LUT*/
-	su2double Pressure_Reference_Value;su2double Density_Reference_Value;su2double Temperature_Reference_Value;su2double Velocity_Reference_Value;su2double Energy_Reference_Value;
+	su2double Pressure_Reference_Value;
+	su2double Density_Reference_Value;
+	su2double Temperature_Reference_Value;
+	su2double Velocity_Reference_Value;
+	su2double Energy_Reference_Value;
 
 	//Put the trapezoidal maps into variables
 	CTrapezoidalMap rhoe_map[2], Prho_map[2], hs_map[2], Ps_map[2], rhoT_map[2],
@@ -81,7 +88,27 @@ protected:
 	dktdrho_T, /*!< \brief Fluid derivative DktDrho_T.  */
 	dktdT_rho; /*!< \brief Fluid derivative DktDT_rho. */
 
-	vector< su2double > ThermoTables_StaticEnergy[2], /*!< \brief Internal Energy look up table values. */
+	//Each triangle will have precomputed interpolation coefficients and
+	//matrices. The coefficients are simple the function values
+	vector<vector<unsigned long> > Interpolation_Points[2];
+	vector<vector<vector<su2double> > > Rhoe_Interpolation_Matrix_Inverse[2];
+	vector<vector< vector<su2double> > > PT_Interpolation_Matrix_Inverse[2];
+	vector<vector< vector<su2double> > > Prho_Interpolation_Matrix_Inverse[2];
+	vector<vector< vector<su2double> >  > rhoT_Interpolation_Matrix_Inverse[2];
+	vector<vector< vector<su2double> > > hs_Interpolation_Matrix_Inverse[2];
+	vector<vector< vector<su2double> > > Ps_Interpolation_Matrix_Inverse[2];
+	vector<su2double> Query_Specific_Interpolation_Coefficients;
+
+	//KD tree things.
+	su2_adtPointsOnlyClass *KD_tree;
+	vector<su2double> query;
+	vector<unsigned long> PointIDs;
+	vector<su2double> coors;
+	vector<su2double> best_dist;
+	vector<unsigned long> result_IDs;
+	vector<int> result_ranks;
+
+	vector<su2double> ThermoTables_StaticEnergy[2], /*!< \brief Internal Energy look up table values. */
 	ThermoTables_Entropy[2], /*!< \brief Entropy look up table values. */
 	ThermoTables_Enthalpy[2], /*!< \brief Enthalpy required as separate variable for use in HS tree look up table values. */
 	ThermoTables_Density[2], /*!< \brief Density look up table values. */
@@ -100,9 +127,9 @@ protected:
 	ThermoTables_dktdrho_T[2], /*!< \brief Fluid derivative DktDrho_T look up table values. */
 	ThermoTables_dktdT_rho[2]; /*!< \brief Fluid derivative DktDT_rho look up table values. */
 
-	su2double Interpolation_Matrix[4][4]; /*!< \brief The (Vandermonde) matrix for the interpolation (bilinear) */
+	vector<vector<su2double> > Interpolation_Matrix; /*!< \brief The (Vandermonde) matrix for the interpolation (bilinear) */
+	vector<vector<su2double> > Interpolation_Matrix_Inverse; /*!< \brief Used to hold inverse of Interpolation_Matrix, and solution vector */
 
-	su2double Interpolation_Coeff[4][4]; /*!< \brief Used to hold inverse of Interpolation_Matrix, and solution vector */
 	int nTable_Zone_Stations[2]; /*!< \brief Number of nodes in the '2' zones of the LuT*/
 	int nTable_Zone_Triangles[2]; /*!< \brief Number of triangles in the '2' zones of the LuT (must be triangles for now)*/
 	vector<vector<int> > Table_Zone_Triangles[2]; /*!< \brief The triangles in each zone are stored as three intgers (the tree defining data-points)*/
@@ -130,9 +157,10 @@ public:
 	 */
 	void Get_Unique_Edges();
 
-	void Get_Bounding_Simplex_From_TrapezoidalMap(CTrapezoidalMap *t_map,
-	su2double x, su2double y);
+	void Compute_Interpolation_Coefficients();
 
+	void Get_Bounding_Simplex_From_TrapezoidalMap(CTrapezoidalMap *t_map,
+			su2double x, su2double y);
 
 	void SetTDState_rhoe(su2double rho, su2double e);
 
@@ -189,16 +217,17 @@ public:
 
 	void Gaussian_Inverse(int nDim);
 
-	void Interpolate_2D_Bilinear(su2double x, su2double y,
-			vector< su2double > *ThermoTables_X, vector< su2double > *ThermoTables_Y,
-			std::string grid_var);
+	vector<vector<double> > Interpolation_Matrix_Prepare_And_Invert(vector<su2double> *ThermoTables_X, vector<su2double> *ThermoTables_Y);
+	void Calculate_Query_Specific_Coefficients(su2double x, su2double y);
+
+	su2double Interpolate_Function2D(vector< su2double > *ThermoTables_Z);
 
 	/*!
 	 * \brief Use the interpolation coefficients to interpolate a given thermodynamic variable property. (Must calculate the interpolation coefficients first)
 	 * \param[in] interpolant_var - the name of the variable to be interpolated e.g Density
 	 */
 
-	su2double Interpolate_2D_Bilinear(vector< su2double > *ThermoTables_Z);
+	vector<su2double> Evaluate_Interpolation_Vector(su2double x, su2double y);
 
 	/*!
 	 * \brief Load the LUT table from a CFX file format. X axis must be Density, and Y axis pressure. Equal spacing not required.
@@ -226,3 +255,4 @@ public:
 	void RecordState(char* file);
 
 };
+
