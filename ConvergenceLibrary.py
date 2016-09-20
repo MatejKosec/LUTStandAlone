@@ -13,9 +13,6 @@ from shutil import copyfile
 import os 
 import sys
 
-
-
- 
 class ThermoData(object):
     Temperature=False;
     Density=False;
