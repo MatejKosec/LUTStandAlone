@@ -522,6 +522,7 @@ void CLookUpTable::Get_Bounding_Simplex_From_TrapezoidalMap(
 	t_map[CurrentZone].Find_Containing_Simplex(x, y);
 	CurrentFace = t_map[CurrentZone].getCurrentFace();
 	CurrentPoints = Interpolation_Points[CurrentZone][CurrentFace];
+	cout<<CurrentFace;
 
 }
 

@@ -235,6 +235,7 @@ cout<<"--------------------------------------------------------------\n";
 	for (int j=0; j<i;j++)
 		{
 			LUT2.SetTDState_hs(h[j], s[j]);
+			cout<<" , "<<j<<endl;
 			LUT2.RecordState(outfile);
 		}
 //	clock_t hs_start = clock();
